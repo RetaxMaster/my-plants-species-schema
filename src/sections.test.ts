@@ -125,22 +125,27 @@ describe('nativeClimate / metadata', () => {
     ).toThrow();
   });
 
-  it('requires at least one source, a valid URL, and an ISO date', () => {
+  it('accepts metadata with confidence and at least one valid source (no briefPath)', () => {
     expect(() =>
-      metadataSchema.parse({ confidence: 'high', sources: [], briefPath: 'brief.md' }),
-    ).toThrow();
+      metadataSchema.parse({
+        confidence: 'high',
+        sources: [{ title: 'RHS', url: 'https://www.rhs.org.uk/', accessedAt: '2026-06-18' }],
+      }),
+    ).not.toThrow();
+  });
+
+  it('requires at least one source, a valid URL, and an ISO date', () => {
+    expect(() => metadataSchema.parse({ confidence: 'high', sources: [] })).toThrow();
     expect(() =>
       metadataSchema.parse({
         confidence: 'high',
         sources: [{ title: 'RHS', url: 'not-a-url', accessedAt: '2026-06-18' }],
-        briefPath: 'brief.md',
       }),
     ).toThrow();
     expect(() =>
       metadataSchema.parse({
         confidence: 'high',
         sources: [{ title: 'RHS', url: 'https://www.rhs.org.uk/', accessedAt: 'June 2026' }],
-        briefPath: 'brief.md',
       }),
     ).toThrow();
   });

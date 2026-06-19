@@ -87,5 +87,4 @@ export const sourceSchema = z.object({
 export const metadataSchema = z.object({
   confidence: z.enum(CONFIDENCE_LEVELS),
   sources: z.array(sourceSchema).min(1),
-  briefPath: z.string().min(1),
 });

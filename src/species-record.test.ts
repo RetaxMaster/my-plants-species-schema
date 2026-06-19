@@ -27,7 +27,6 @@ const validRecord: SpeciesRecord = {
   metadata: {
     confidence: 'high',
     sources: [{ title: 'RHS', url: 'https://www.rhs.org.uk/plants/monstera', accessedAt: '2026-06-18' }],
-    briefPath: 'brief.md',
   },
 };
 
