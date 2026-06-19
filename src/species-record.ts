@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  cultivarSchema,
   fertilizingSchema,
   humiditySchema,
   lightSchema,
@@ -22,6 +23,7 @@ export const speciesRecordSchema = z.object({
   repotting: repottingSchema,
   maintenance: maintenanceSchema,
   nativeClimate: nativeClimateSchema,
+  cultivars: z.array(cultivarSchema).default([]),
   metadata: metadataSchema,
 });
 

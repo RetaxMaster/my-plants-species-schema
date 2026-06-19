@@ -78,6 +78,19 @@ export const nativeClimateSchema = z
     message: 'hardinessMinC must be <= hardinessMaxC',
   });
 
+// A named horticultural variety within the species (e.g. Dracaena fragrans 'Massangeana').
+// PURELY INFORMATIONAL: it carries identity + appearance for humans, NOT care overrides — a
+// cultivar's care is treated as the species' care, so the deterministic engine never branches
+// on it. Any care nuance worth mentioning goes in the free-text `careNote`, never as structured
+// values that would fork the care surface.
+export const cultivarSchema = z.object({
+  name: z.string().min(1),
+  alsoKnownAs: z.array(z.string().min(1)).default([]),
+  group: z.string().min(1).nullable(),
+  description: z.string().min(1),
+  careNote: z.string().min(1).nullable(),
+});
+
 export const sourceSchema = z.object({
   title: z.string().min(1),
   url: z.string().url(),

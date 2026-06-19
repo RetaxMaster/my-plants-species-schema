@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cultivarSchema,
   fertilizingSchema,
   humiditySchema,
   lightSchema,
@@ -147,6 +148,37 @@ describe('nativeClimate / metadata', () => {
         confidence: 'high',
         sources: [{ title: 'RHS', url: 'https://www.rhs.org.uk/', accessedAt: 'June 2026' }],
       }),
+    ).toThrow();
+  });
+});
+
+describe('cultivarSchema', () => {
+  it('accepts a cultivar and defaults alsoKnownAs to an empty array', () => {
+    const cultivar = cultivarSchema.parse({
+      name: 'Massangeana',
+      group: 'Deremensis Group',
+      description: 'Wide yellow-lime central stripe down each leaf.',
+      careNote: 'More variegation needs brighter indirect light to keep colour.',
+    });
+    expect(cultivar.alsoKnownAs).toEqual([]);
+    expect(cultivar.name).toBe('Massangeana');
+  });
+
+  it('accepts explicit nulls for group and careNote (no nuance to record)', () => {
+    expect(() =>
+      cultivarSchema.parse({
+        name: 'Lemon Lime',
+        alsoKnownAs: ['Lemon-Lime'],
+        group: null,
+        description: 'Bright chartreuse/lime stripes.',
+        careNote: null,
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects an empty name', () => {
+    expect(() =>
+      cultivarSchema.parse({ name: '', group: null, description: 'x', careNote: null }),
     ).toThrow();
   });
 });

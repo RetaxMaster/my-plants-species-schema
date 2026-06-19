@@ -24,6 +24,15 @@ const validRecord: SpeciesRecord = {
   repotting: { typicalIntervalMonths: 24, signs: ['Roots out of drainage holes'] },
   maintenance: { pruning: 'Trim leggy stems.', rotationDays: 14, leafCleaningDays: 30, commonPests: ['spider mites'] },
   nativeClimate: { description: 'Tropical rainforest understory.', koppen: 'Af', hardinessMinC: 10, hardinessMaxC: 38 },
+  cultivars: [
+    {
+      name: 'Thai Constellation',
+      alsoKnownAs: [],
+      group: null,
+      description: 'Creamy variegation speckled across the leaves.',
+      careNote: 'Variegated tissue scorches more easily — keep it out of direct sun.',
+    },
+  ],
   metadata: {
     confidence: 'high',
     sources: [{ title: 'RHS', url: 'https://www.rhs.org.uk/plants/monstera', accessedAt: '2026-06-18' }],
@@ -33,6 +42,13 @@ const validRecord: SpeciesRecord = {
 describe('speciesRecordSchema', () => {
   it('parses a complete valid record', () => {
     expect(() => parseSpeciesRecord(validRecord)).not.toThrow();
+  });
+
+  it('defaults cultivars to an empty array when omitted', () => {
+    const { cultivars, ...withoutCultivars } = validRecord;
+    void cultivars;
+    const parsed = parseSpeciesRecord(withoutCultivars);
+    expect(parsed.cultivars).toEqual([]);
   });
 
   it('rejects a record missing a required section', () => {
