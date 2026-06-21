@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
   parseSpeciesRecord,
+  primaryCommonName,
   safeParseSpeciesRecord,
   speciesRecordSchema,
 } from './species-record.js';
@@ -91,5 +92,18 @@ describe('speciesRecordSchema', () => {
   it('defaults the misting section to avoid when omitted (backward compatible)', () => {
     const rec = parseSpeciesRecord(validRecord);
     expect(rec.misting).toEqual({ benefit: 'avoid', baseFrequencyDays: null, note: null });
+  });
+});
+
+describe('primaryCommonName', () => {
+  it('returns the first common name', () => {
+    expect(
+      primaryCommonName({ commonNames: ['Snake plant', 'MIL'], scientificName: 'Dracaena trifasciata' }),
+    ).toBe('Snake plant');
+  });
+  it('falls back to the scientific name when there are no common names', () => {
+    expect(primaryCommonName({ commonNames: [], scientificName: 'Dracaena trifasciata' })).toBe(
+      'Dracaena trifasciata',
+    );
   });
 });
