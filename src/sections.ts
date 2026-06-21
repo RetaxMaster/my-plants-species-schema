@@ -16,6 +16,7 @@ export const wateringSchema = z.object({
   droughtTolerance: z.enum(DROUGHT_TOLERANCE),
   temperatureSensitivity: z.enum(SENSITIVITY),
   lightSensitivity: z.enum(SENSITIVITY),
+  humiditySensitivity: z.enum(SENSITIVITY).default('low'),
   reduceInDormancy: z.boolean(),
 });
 

@@ -15,6 +15,7 @@ const validRecord: SpeciesRecord = {
     droughtTolerance: 'medium',
     temperatureSensitivity: 'high',
     lightSensitivity: 'medium',
+    humiditySensitivity: 'medium',
     reduceInDormancy: true,
   },
   light: { minimum: 'medium', ideal: 'bright-indirect', maximum: 'direct' },
@@ -67,5 +68,20 @@ describe('speciesRecordSchema', () => {
 
   it('exposes the schema object for advanced consumers', () => {
     expect(typeof speciesRecordSchema.parse).toBe('function');
+  });
+
+  it('defaults humiditySensitivity to low when omitted', () => {
+    const { humiditySensitivity, ...wateringWithout } = validRecord.watering;
+    void humiditySensitivity;
+    const rec = parseSpeciesRecord({ ...validRecord, watering: wateringWithout });
+    expect(rec.watering.humiditySensitivity).toBe('low');
+  });
+
+  it('accepts an explicit humiditySensitivity', () => {
+    const rec = parseSpeciesRecord({
+      ...validRecord,
+      watering: { ...validRecord.watering, humiditySensitivity: 'high' },
+    });
+    expect(rec.watering.humiditySensitivity).toBe('high');
   });
 });
