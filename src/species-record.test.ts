@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import type { z } from 'zod';
 import {
   parseSpeciesRecord,
   safeParseSpeciesRecord,
   speciesRecordSchema,
-  type SpeciesRecord,
 } from './species-record.js';
 
-const validRecord: SpeciesRecord = {
+// Use the schema's INPUT type so fields that carry a `.default(...)` (e.g. `misting`,
+// `watering.humiditySensitivity`) may be omitted from the fixture — that is exactly what the
+// backward-compatibility assertions exercise.
+const validRecord: z.input<typeof speciesRecordSchema> = {
   scientificName: 'Monstera deliciosa',
   commonNames: ['Swiss cheese plant'],
   watering: {
@@ -83,5 +86,10 @@ describe('speciesRecordSchema', () => {
       watering: { ...validRecord.watering, humiditySensitivity: 'high' },
     });
     expect(rec.watering.humiditySensitivity).toBe('high');
+  });
+
+  it('defaults the misting section to avoid when omitted (backward compatible)', () => {
+    const rec = parseSpeciesRecord(validRecord);
+    expect(rec.misting).toEqual({ benefit: 'avoid', baseFrequencyDays: null, note: null });
   });
 });
