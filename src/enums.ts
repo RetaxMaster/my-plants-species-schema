@@ -16,6 +16,9 @@ export type DroughtTolerance = (typeof DROUGHT_TOLERANCE)[number];
 export const CONFIDENCE_LEVELS = ['low', 'medium', 'high'] as const;
 export type ConfidenceLevel = (typeof CONFIDENCE_LEVELS)[number];
 
+export const MISTING_BENEFIT = ['beneficial', 'tolerated', 'avoid'] as const;
+export type MistingBenefit = (typeof MISTING_BENEFIT)[number];
+
 export const SOIL_DRYNESS = [
   'keep-moist',
   'top-inch-dry',

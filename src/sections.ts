@@ -3,6 +3,7 @@ import {
   CONFIDENCE_LEVELS,
   DROUGHT_TOLERANCE,
   LIGHT_LEVELS,
+  MISTING_BENEFIT,
   SEASONS,
   SENSITIVITY,
   SOIL_DRYNESS,
@@ -19,6 +20,17 @@ export const wateringSchema = z.object({
   humiditySensitivity: z.enum(SENSITIVITY).default('low'),
   reduceInDormancy: z.boolean(),
 });
+
+export const mistingSchema = z
+  .object({
+    benefit: z.enum(MISTING_BENEFIT).default('avoid'),
+    baseFrequencyDays: z.number().int().positive().nullable().default(null),
+    note: z.string().min(1).nullable().default(null),
+  })
+  .refine(
+    (m) => (m.benefit === 'avoid' ? m.baseFrequencyDays === null : m.baseFrequencyDays !== null),
+    { message: 'baseFrequencyDays must be set when benefit is beneficial/tolerated, and null when avoid' },
+  );
 
 export const lightSchema = z
   .object({

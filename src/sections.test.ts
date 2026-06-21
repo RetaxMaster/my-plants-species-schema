@@ -6,6 +6,7 @@ import {
   lightSchema,
   maintenanceSchema,
   metadataSchema,
+  mistingSchema,
   nativeClimateSchema,
   repottingSchema,
   temperatureSchema,
@@ -37,6 +38,24 @@ describe('wateringSchema', () => {
         reduceInDormancy: true,
       }),
     ).toThrow();
+  });
+});
+
+describe('mistingSchema', () => {
+  it('defaults to avoid with null frequency and note', () => {
+    const m = mistingSchema.parse({});
+    expect(m).toEqual({ benefit: 'avoid', baseFrequencyDays: null, note: null });
+  });
+  it('accepts a beneficial schedule', () => {
+    const m = mistingSchema.parse({ benefit: 'beneficial', baseFrequencyDays: 3, note: 'broad leaves' });
+    expect(m.benefit).toBe('beneficial');
+    expect(m.baseFrequencyDays).toBe(3);
+  });
+  it('rejects benefit !== avoid with a null baseFrequencyDays', () => {
+    expect(() => mistingSchema.parse({ benefit: 'tolerated', baseFrequencyDays: null })).toThrow();
+  });
+  it('rejects avoid with a non-null baseFrequencyDays', () => {
+    expect(() => mistingSchema.parse({ benefit: 'avoid', baseFrequencyDays: 5 })).toThrow();
   });
 });
 
