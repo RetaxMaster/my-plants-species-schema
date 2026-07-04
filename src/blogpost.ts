@@ -22,6 +22,11 @@ export const blogpostInputSchema = z.object({
   bodyEn: z.string().min(1).nullable().default(null),
   coverImageUrl: z.string().url().nullable().default(null),
   coverImageObjectKey: z.string().min(1).nullable().default(null),
+  // Cover-image (OG) generation prompt. Language-neutral (the cover subject is visual, not textual),
+  // so it is a SINGLE field — deliberately unlike title/excerpt/body. Nullable: legacy posts and
+  // human-created free-form posts may have none. Authored by the editorial-writer, kept read-only in
+  // the writing desk, and never edited by hand.
+  coverImagePrompt: z.string().min(1).nullable().default(null),
   youtubeUrl: z.string().url().nullable().default(null),
   ctaLink: z.string().url().nullable().default(null),
   ctaLabelEs: z.string().min(1).nullable().default(null),

@@ -41,4 +41,24 @@ describe('blogpostInputSchema', () => {
     const ok = blogpostInputSchema.parse({ ...minimal, coverImageUrl: 'https://cdn.test/x.webp' });
     expect(ok.coverImageUrl).toBe('https://cdn.test/x.webp');
   });
+
+  it('defaults coverImagePrompt to null when omitted', () => {
+    const parsed = blogpostInputSchema.parse(minimal);
+    expect(parsed.coverImagePrompt).toBeNull();
+  });
+
+  it('accepts an explicit null coverImagePrompt', () => {
+    const parsed = blogpostInputSchema.parse({ ...minimal, coverImagePrompt: null });
+    expect(parsed.coverImagePrompt).toBeNull();
+  });
+
+  it('accepts a non-empty coverImagePrompt string', () => {
+    const prompt = 'Macro of a Monstera leaf, 16:9, soft morning light.';
+    const parsed = blogpostInputSchema.parse({ ...minimal, coverImagePrompt: prompt });
+    expect(parsed.coverImagePrompt).toBe(prompt);
+  });
+
+  it('rejects an empty-string coverImagePrompt (min(1) when present)', () => {
+    expect(blogpostInputSchema.safeParse({ ...minimal, coverImagePrompt: '' }).success).toBe(false);
+  });
 });
