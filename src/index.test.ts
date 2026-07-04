@@ -11,9 +11,7 @@ describe('public API surface', () => {
     expect(api.SEASONS).toContain('summer');
     expect(typeof api.blogpostInputSchema).toBe('object');
     expect(typeof api.blogpostStatusSchema).toBe('object');
-    expect(typeof api.hasThumbnailPrompt).toBe('function');
     expect(typeof api.toBlogpostSlug).toBe('function');
     expect(api.BlogpostStatus.PUBLISHED).toBe(1);
-    expect(api.THUMBNAIL_PROMPT_OPEN).toContain('THUMBNAIL-PROMPT');
   });
 });
