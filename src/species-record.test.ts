@@ -12,7 +12,8 @@ import {
 // backward-compatibility assertions exercise.
 const validRecord: z.input<typeof speciesRecordSchema> = {
   scientificName: 'Monstera deliciosa',
-  commonNames: ['Swiss cheese plant'],
+  commonNamesEn: ['Swiss cheese plant'],
+  commonNamesEs: ['Costilla de Adán'],
   watering: {
     baseIntervalDays: 7,
     soilDrynessBeforeWatering: 'half-dry',
@@ -93,17 +94,32 @@ describe('speciesRecordSchema', () => {
     const rec = parseSpeciesRecord(validRecord);
     expect(rec.misting).toEqual({ benefit: 'avoid', baseFrequencyDays: null, note: null });
   });
+
+  it('defaults commonNamesEn and commonNamesEs to an empty array when omitted', () => {
+    const { commonNamesEn, commonNamesEs, ...withoutCommonNames } = validRecord;
+    void commonNamesEn;
+    void commonNamesEs;
+    const parsed = parseSpeciesRecord(withoutCommonNames);
+    expect(parsed.commonNamesEn).toEqual([]);
+    expect(parsed.commonNamesEs).toEqual([]);
+  });
 });
 
 describe('primaryCommonName', () => {
-  it('returns the first common name', () => {
+  it('returns the first English common name for the en locale', () => {
     expect(
-      primaryCommonName({ commonNames: ['Snake plant', 'MIL'], scientificName: 'Dracaena trifasciata' }),
+      primaryCommonName({ commonNamesEn: ['Snake plant'], commonNamesEs: ['Lengua de suegra'] }, 'en'),
     ).toBe('Snake plant');
   });
-  it('falls back to the scientific name when there are no common names', () => {
-    expect(primaryCommonName({ commonNames: [], scientificName: 'Dracaena trifasciata' })).toBe(
-      'Dracaena trifasciata',
-    );
+  it('returns the first Spanish common name for the es locale', () => {
+    expect(
+      primaryCommonName({ commonNamesEn: ['Snake plant'], commonNamesEs: ['Lengua de suegra'] }, 'es'),
+    ).toBe('Lengua de suegra');
+  });
+  it('returns null when the requested locale has no common names', () => {
+    expect(primaryCommonName({ commonNamesEn: ['Snake plant'], commonNamesEs: [] }, 'es')).toBeNull();
+  });
+  it('returns null when both locales have no common names', () => {
+    expect(primaryCommonName({ commonNamesEn: [], commonNamesEs: [] }, 'en')).toBeNull();
   });
 });

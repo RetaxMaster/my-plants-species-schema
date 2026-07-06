@@ -15,7 +15,8 @@ import {
 
 export const speciesRecordSchema = z.object({
   scientificName: z.string().min(1),
-  commonNames: z.array(z.string().min(1)).default([]),
+  commonNamesEn: z.array(z.string().min(1)).default([]),
+  commonNamesEs: z.array(z.string().min(1)).default([]),
   watering: wateringSchema,
   misting: mistingSchema.default({ benefit: 'avoid', baseFrequencyDays: null, note: null }),
   light: lightSchema,
@@ -41,8 +42,15 @@ export function safeParseSpeciesRecord(
   return speciesRecordSchema.safeParse(data);
 }
 
-// The human-facing name: the first (most recognizable) common name, or the scientific name if none.
-// Single source of the "primary name" rule so the API and any other consumer never fork it.
-export function primaryCommonName(record: { commonNames: string[]; scientificName: string }): string {
-  return record.commonNames[0] ?? record.scientificName;
+export type CommonNameLocale = 'en' | 'es';
+
+// The human-facing primary common name for a locale: the first name in that locale's list, or null.
+// Thin + locale-scoped on purpose — the cross-locale fallback and the scientific-name fallback are the
+// CONSUMER's job (the API projects both languages; the web resolves the fallback via pickLocalized).
+export function primaryCommonName(
+  record: { commonNamesEn: string[]; commonNamesEs: string[] },
+  locale: CommonNameLocale,
+): string | null {
+  const list = locale === 'es' ? record.commonNamesEs : record.commonNamesEn;
+  return list[0] ?? null;
 }
