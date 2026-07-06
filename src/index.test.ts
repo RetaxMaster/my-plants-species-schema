@@ -13,5 +13,12 @@ describe('public API surface', () => {
     expect(typeof api.blogpostStatusSchema).toBe('object');
     expect(typeof api.toBlogpostSlug).toBe('function');
     expect(api.BlogpostStatus.PUBLISHED).toBe(1);
+    expect(typeof api.plantProfileSchema).toBe('object');
+    expect(typeof api.plantProfileUpdateSchema).toBe('object');
+    expect(typeof api.windowDistanceEnum).toBe('object');
+    expect(api.WINDOW_DISTANCES).toContain('on-sill');
+    expect(api.POT_TYPES).toContain('terracotta');
+    expect(api.SOIL_MIXES).toContain('aroid');
+    expect(api.GROWTH_HABITS).toContain('upright');
   });
 });
