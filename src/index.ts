@@ -8,3 +8,5 @@ export * from './plant-profile-constants.js';
 export * from './plant-profile.js';
 export * from './place-constants.js';
 export * from './place.js';
+export * from './feedback-reason-constants.js';
+export * from './feedback-reason.js';
