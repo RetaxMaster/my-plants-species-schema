@@ -1,6 +1,6 @@
 {
   "name": "@retaxmaster/my-plants-species-schema",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Shared curated plant-species data contract for MyPlants.",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,6 +17,10 @@
     "./plant-profile-constants": {
       "types": "./dist/plant-profile-constants.d.ts",
       "import": "./dist/plant-profile-constants.js"
+    },
+    "./place-constants": {
+      "types": "./dist/place-constants.d.ts",
+      "import": "./dist/place-constants.js"
     }
   },
   "files": [
