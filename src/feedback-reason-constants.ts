@@ -31,3 +31,21 @@ export type WaterFeedbackReason = (typeof WATER_FEEDBACK_REASONS)[number];
 // references them by name — never a re-typed string literal (fork-safe).
 export const JUSTIFIED_EARLY_WATER_REASON = 'dry-soil' satisfies EarlyWaterReason;
 export const JUSTIFIED_POSTPONE_REASON = 'soil-still-moist' satisfies WaterPostponeReason;
+
+// ---- REPOT inspection reasons (spec F.3) --------------------------------------------------------------
+// REPOT is an INSPECTION, not a scheduled action: the owner opens the pot, looks, and reports one of three
+// real outcomes. These slugs are REPOT-ONLY (a WATER event never carries one, and vice versa). They are
+// persisted verbatim into CareEvent.payload; human labels are the web's i18n concern.
+//
+//   not-needed-yet     JUSTIFIED   — "I looked; the roots are fine."  (engine was early → lengthen cadence)
+//   needed-cannot-now  JUSTIFIED   — "I looked; it IS root-bound, but I can't repot today." (→ shorten)
+//   could-not-check    UNJUSTIFIED — "I did not look." (logistics, not information → moves nothing)
+export const REPOT_POSTPONE_REASONS = ['not-needed-yet', 'needed-cannot-now', 'could-not-check'] as const;
+export type RepotPostponeReason = (typeof REPOT_POSTPONE_REASONS)[number];
+
+// The two reasons that carry ground truth and may move the schedule (spec F.3/F.6). Named so the API
+// engine references them by name — never a re-typed literal (fork-safe).
+export const JUSTIFIED_REPOT_REASONS = ['not-needed-yet', 'needed-cannot-now'] as const satisfies
+  readonly RepotPostponeReason[];
+// The one reason that is pure logistics and must never move the cadence (the F1.2 fix's justification gate).
+export const UNJUSTIFIED_REPOT_REASON = 'could-not-check' satisfies RepotPostponeReason;

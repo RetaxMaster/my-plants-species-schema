@@ -5,8 +5,11 @@ import {
   WATER_FEEDBACK_REASONS,
   JUSTIFIED_EARLY_WATER_REASON,
   JUSTIFIED_POSTPONE_REASON,
+  REPOT_POSTPONE_REASONS,
+  JUSTIFIED_REPOT_REASONS,
+  UNJUSTIFIED_REPOT_REASON,
 } from './feedback-reason-constants.js';
-import { earlyWaterReasonEnum, waterPostponeReasonEnum } from './feedback-reason.js';
+import { earlyWaterReasonEnum, waterPostponeReasonEnum, repotPostponeReasonEnum } from './feedback-reason.js';
 
 describe('WATER feedback-reason vocabularies', () => {
   it('lists the early-watering reasons (unjustified first, justified last)', () => {
@@ -47,5 +50,33 @@ describe('feedback-reason Zod layer', () => {
     expect(waterPostponeReasonEnum.parse('soil-still-moist')).toBe('soil-still-moist');
     expect(earlyWaterReasonEnum.safeParse('soil-still-moist').success).toBe(false); // wrong vocab
     expect(waterPostponeReasonEnum.safeParse('nope').success).toBe(false);
+  });
+});
+
+describe('REPOT_POSTPONE_REASONS (spec F.3)', () => {
+  it('is exactly the three inspection outcomes, in the documented order', () => {
+    expect(REPOT_POSTPONE_REASONS).toEqual([
+      'not-needed-yet',
+      'needed-cannot-now',
+      'could-not-check',
+    ]);
+  });
+  it('names the two JUSTIFIED reasons and the single UNJUSTIFIED one', () => {
+    expect(JUSTIFIED_REPOT_REASONS).toEqual(['not-needed-yet', 'needed-cannot-now']);
+    expect(UNJUSTIFIED_REPOT_REASON).toBe('could-not-check');
+  });
+  it('shares no slug with the WATER vocabulary (they are distinct reason spaces)', () => {
+    for (const r of REPOT_POSTPONE_REASONS) {
+      expect(WATER_FEEDBACK_REASONS as readonly string[]).not.toContain(r);
+    }
+  });
+});
+
+describe('repotPostponeReasonEnum (spec F.3)', () => {
+  it('accepts every REPOT reason and rejects a WATER one', () => {
+    expect(repotPostponeReasonEnum.parse('not-needed-yet')).toBe('not-needed-yet');
+    expect(repotPostponeReasonEnum.parse('needed-cannot-now')).toBe('needed-cannot-now');
+    expect(repotPostponeReasonEnum.parse('could-not-check')).toBe('could-not-check');
+    expect(repotPostponeReasonEnum.safeParse('soil-still-moist').success).toBe(false);
   });
 });
