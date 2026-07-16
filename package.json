@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./image-limits": {
+      "types": "./dist/image-limits.d.ts",
+      "import": "./dist/image-limits.js"
+    },
     "./blogpost-constants": {
       "types": "./dist/blogpost-constants.d.ts",
       "import": "./dist/blogpost-constants.js"
