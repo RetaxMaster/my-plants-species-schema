@@ -26,6 +26,10 @@
       "types": "./dist/plant-profile-constants.d.ts",
       "import": "./dist/plant-profile-constants.js"
     },
+    "./progress-tag-constants": {
+      "types": "./dist/progress-tag-constants.d.ts",
+      "import": "./dist/progress-tag-constants.js"
+    },
     "./place-constants": {
       "types": "./dist/place-constants.d.ts",
       "import": "./dist/place-constants.js"
