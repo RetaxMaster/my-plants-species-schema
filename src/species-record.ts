@@ -12,6 +12,7 @@ import {
   temperatureSchema,
   wateringSchema,
 } from './sections.js';
+import { GROWTH_HABITS } from './plant-profile-constants.js';
 
 export const speciesRecordSchema = z.object({
   scientificName: z.string().min(1),
@@ -27,6 +28,11 @@ export const speciesRecordSchema = z.object({
   maintenance: maintenanceSchema,
   nativeClimate: nativeClimateSchema,
   cultivars: z.array(cultivarSchema).default([]),
+  // The species' dominant mature growth form — display-only measurement guidance for the owner (spec §2.2),
+  // NOT a care-engine input. Enum DERIVED from the shared GROWTH_HABITS array (the same vocabulary the
+  // per-plant profile uses) so it can never fork. Nullable + default(null): every already-curated record
+  // predates this field and must parse to null (falling back to a generic measure guide) until re-cured.
+  growthHabit: z.enum(GROWTH_HABITS).nullable().default(null),
   metadata: metadataSchema,
 });
 

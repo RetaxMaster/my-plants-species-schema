@@ -6,6 +6,7 @@ import {
   safeParseSpeciesRecord,
   speciesRecordSchema,
 } from './species-record.js';
+import { GROWTH_HABITS } from './plant-profile-constants.js';
 
 // Use the schema's INPUT type so fields that carry a `.default(...)` (e.g. `misting`,
 // `watering.humiditySensitivity`) may be omitted from the fixture — that is exactly what the
@@ -121,5 +122,26 @@ describe('primaryCommonName', () => {
   });
   it('returns null when both locales have no common names', () => {
     expect(primaryCommonName({ commonNamesEn: [], commonNamesEs: [] }, 'en')).toBeNull();
+  });
+});
+
+describe('speciesRecordSchema growthHabit (spec §2.2)', () => {
+  it('defaults growthHabit to null when the field is absent (every legacy record)', () => {
+    const parsed = parseSpeciesRecord(validRecord); // validRecord has no growthHabit
+    expect(parsed.growthHabit).toBeNull();
+  });
+
+  it('accepts an explicit null', () => {
+    expect(parseSpeciesRecord({ ...validRecord, growthHabit: null }).growthHabit).toBeNull();
+  });
+
+  it('accepts every value in the shared GROWTH_HABITS vocabulary (enum derived from it — no fork)', () => {
+    for (const habit of GROWTH_HABITS) {
+      expect(parseSpeciesRecord({ ...validRecord, growthHabit: habit }).growthHabit).toBe(habit);
+    }
+  });
+
+  it('rejects a value outside GROWTH_HABITS', () => {
+    expect(() => parseSpeciesRecord({ ...validRecord, growthHabit: 'vine' })).toThrow();
   });
 });
