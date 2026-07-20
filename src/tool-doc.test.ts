@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { renderToolDoc } from './tool-doc.js';
+import { assertInvariantsCover, GENERATED_MARKER, renderToolDoc, syncToolDoc } from './tool-doc.js';
 
 const flat = z.object({ type: z.literal('demo'), name: z.string(), size: z.number().int().min(1).max(9).optional() }).strict();
 
@@ -18,5 +18,32 @@ describe('renderToolDoc', () => {
       title: 'Demo', tools: [{ name: 'demo', schema: flat, example: { type: 'demo' } }],
       invariants: { schemaAttached: {}, external: [] },
     })).toThrow(/example.*demo.*invalid/i);
+  });
+});
+
+const refined = z.object({ min: z.number(), max: z.number() }).refine((v) => v.min <= v.max, { message: 'min<=max' });
+
+describe('assertInvariantsCover', () => {
+  it('throws when a schema-level refine has no map entry', () => {
+    expect(() => assertInvariantsCover({ demo: refined }, { schemaAttached: {}, external: [] }))
+      .toThrow(/undocumented invariant.*demo/i);
+  });
+  it('throws when a map entry names a section that has no refine', () => {
+    expect(() => assertInvariantsCover({ demo: z.object({ a: z.number() }) }, { schemaAttached: { demo: 'x' }, external: [] }))
+      .toThrow(/no refine.*demo/i);
+  });
+  it('passes when refine and map entry agree', () => {
+    expect(() => assertInvariantsCover({ demo: refined }, { schemaAttached: { demo: 'min<=max' }, external: [] })).not.toThrow();
+  });
+});
+
+describe('syncToolDoc', () => {
+  it('refuses to overwrite a file without the generated marker', () => {
+    expect(syncToolDoc({ path: '/nonexistent/but/unreadable', content: 'x', mode: 'check', currentReader: () => 'HAND WRITTEN' }).problems[0])
+      .toMatch(/no generated-by marker/i);
+  });
+  it('reports STALE in check mode when content differs', () => {
+    const r = syncToolDoc({ path: 'p', content: `${GENERATED_MARKER}\nnew`, mode: 'check', currentReader: () => `${GENERATED_MARKER}\nold` });
+    expect(r.problems[0]).toMatch(/stale/i);
   });
 });

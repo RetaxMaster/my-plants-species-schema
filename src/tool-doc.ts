@@ -85,3 +85,48 @@ export function renderToolDoc(input: RenderInput): string {
   }
   return parts.join('\n');
 }
+
+export const GENERATED_MARKER = '<!-- GENERATED FILE — do not edit. Run: npm run tools:generate -->';
+
+/** True when a section schema (after peeling wrappers) is a ZodEffects carrying a refinement/superRefine. */
+export function hasRefinement(schema: z.ZodTypeAny): boolean {
+  const { inner } = unwrap(schema);
+  return inner._def.typeName === 'ZodEffects' && inner._def.effect?.type === 'refinement';
+}
+
+/**
+ * The tripwire. `sections` maps a name → the schema node to inspect. Every refined node MUST have a
+ * `schemaAttached` entry, and every entry MUST name a refined node. A `.refine()` added or removed without
+ * updating the map fails the build.
+ */
+export function assertInvariantsCover(sections: Record<string, z.ZodTypeAny>, invariants: InvariantMap): void {
+  const refined = new Set(Object.entries(sections).filter(([, s]) => hasRefinement(s)).map(([k]) => k));
+  for (const name of refined) {
+    if (!(name in invariants.schemaAttached)) {
+      throw new Error(`tool-doc: undocumented invariant on "${name}" — a .refine() exists but the invariant map has no entry. Add its human description to schemaAttached.`);
+    }
+  }
+  for (const name of Object.keys(invariants.schemaAttached)) {
+    if (!refined.has(name)) {
+      throw new Error(`tool-doc: no refine found for section "${name}" but the invariant map documents one — remove the stale entry (the map is honest in both directions).`);
+    }
+  }
+}
+
+export interface SyncInput { path: string; content: string; mode: 'write' | 'check'; currentReader: () => string | null; writer?: (content: string) => void; }
+export interface SyncResult { problems: string[]; wrote: boolean; }
+
+/** Marker-protected write/check, mirroring generate-codex-agents.ts: never clobber a hand-written file. */
+export function syncToolDoc(input: SyncInput): SyncResult {
+  const current = input.currentReader();
+  const body = input.content.startsWith(GENERATED_MARKER) ? input.content : `${GENERATED_MARKER}\n${input.content}`;
+  if (current !== null && !current.startsWith(GENERATED_MARKER)) {
+    return { problems: [`${input.path} exists and has no generated-by marker — refusing to overwrite a hand-written file.`], wrote: false };
+  }
+  if (current === body) return { problems: [], wrote: false };
+  if (input.mode === 'check') {
+    return { problems: [current === null ? `${input.path} is MISSING — run: npm run tools:generate` : `${input.path} is STALE — run: npm run tools:generate`], wrote: false };
+  }
+  input.writer?.(body);
+  return { problems: [], wrote: true };
+}
