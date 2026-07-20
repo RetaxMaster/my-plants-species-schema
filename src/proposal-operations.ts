@@ -1,0 +1,93 @@
+import { z } from 'zod';
+import { plantProfileUpdateSchema } from './plant-profile.js';
+import { PROGRESS_TAG_KEYS } from './progress-tag-constants.js';
+import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM } from './care-operations-constants.js';
+
+/** Calendar date, per the project's date rules. NEVER an ISO instant. */
+const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a YYYY-MM-DD calendar date');
+
+const task = z.enum(FREQUENCY_BEARING_TASKS);
+const health = z.enum(PROGRESS_HEALTH_VALUES);
+const progressTag = z.enum(PROGRESS_TAG_KEYS as unknown as [string, ...string[]]);
+
+const profileUpdate = plantProfileUpdateSchema.extend({ type: z.literal('profile.update') }).strict();
+const plantUpdate = z.object({
+  type: z.literal('plant.update'),
+  nickname: z.string().max(120).nullable().optional(),
+  placeId: z.string().min(1).optional(),
+}).strict();
+const progressCreate = z.object({
+  type: z.literal('progress.create'),
+  health,
+  occurredOn: ymd.optional(),
+  observations: z.string().max(2000).nullable().optional(),
+  sizeCm: z.number().int().positive().max(MAX_SIZE_CM).nullable().optional(),
+  tags: z.array(progressTag).max(PROGRESS_TAG_KEYS.length).optional(),
+}).strict();
+const progressUpdate = z.object({
+  type: z.literal('progress.update'),
+  entryId: z.string().min(1),
+  health: health.optional(),
+  occurredOn: ymd.optional(),
+  observations: z.string().max(2000).nullable().optional(),
+  sizeCm: z.number().int().positive().max(MAX_SIZE_CM).nullable().optional(),
+  tags: z.array(progressTag).max(PROGRESS_TAG_KEYS.length).optional(),
+}).strict();
+const progressDelete = z.object({ type: z.literal('progress.delete'), entryId: z.string().min(1) }).strict();
+const frequencySet = z.object({ type: z.literal('frequency.set'), task, intervalDays: z.number().int().min(1).max(3650) }).strict();
+const frequencyClear = z.object({ type: z.literal('frequency.clear'), task }).strict();
+const careDone = z.object({ type: z.literal('care.done'), task, occurredOn: ymd }).strict();
+
+const IDENTITY_KEYS = new Set(['type', 'entryId', 'task']);
+const REQUIRES_A_FIELD = new Set(['profile.update', 'plant.update', 'progress.update']);
+
+export const operationSchema = z
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone])
+  .superRefine((op, ctx) => {
+    if (!REQUIRES_A_FIELD.has(op.type)) return;
+    const writes = Object.keys(op).filter((k) => !IDENTITY_KEYS.has(k));
+    if (writes.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${op.type} requires at least one field to change` });
+    }
+  });
+export type ProposalOperation = z.infer<typeof operationSchema>;
+
+export const MAX_OPERATIONS = 10;
+export const MAX_SUMMARY_CHARS = 500;
+export const MAX_SERIALIZED_BYTES = 64 * 1024;
+
+export const createProposalSchema = z.object({
+  summary: z.string().min(1).max(MAX_SUMMARY_CHARS),
+  operations: z.array(operationSchema).min(1).max(MAX_OPERATIONS),
+}).strict();
+export type CreateProposalBody = z.infer<typeof createProposalSchema>;
+
+function writeSet(op: ProposalOperation): string[] {
+  switch (op.type) {
+    case 'profile.update': return Object.keys(op).filter((k) => k !== 'type').map((k) => `profile:${k}`);
+    case 'plant.update': return Object.keys(op).filter((k) => k !== 'type').map((k) => `plant:${k}`);
+    case 'progress.create': return [];
+    case 'progress.update':
+    case 'progress.delete': return [`entry:${op.entryId}`];
+    case 'frequency.set':
+    case 'frequency.clear': return [`frequency:${op.task}`];
+    case 'care.done': return [`care:${op.task}:${op.occurredOn}`];
+  }
+}
+
+/** Pure. Returns the first overlapping write-set key, or null. The API wraps this in a BadRequestException. */
+export function findOverlappingWriteSet(operations: ProposalOperation[]): string | null {
+  const seen = new Set<string>();
+  for (const op of operations) {
+    for (const key of writeSet(op)) {
+      if (seen.has(key)) return key;
+      seen.add(key);
+    }
+  }
+  return null;
+}
+
+/** Pure. Serialized UTF-8 byte length — control chars cost six, accents more than one. */
+export function serializedBytes(value: unknown): number {
+  return Buffer.byteLength(JSON.stringify(value ?? null));
+}
