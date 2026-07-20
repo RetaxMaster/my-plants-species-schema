@@ -43,11 +43,14 @@ export function describeType(schema: z.ZodTypeAny): string {
   else if (t === 'ZodLiteral') label = `\`${String(inner._def.value)}\``;
   else if (t === 'ZodString') label = 'string';
   else if (t === 'ZodNumber') {
-    const checks = inner._def.checks as { kind: string; value: number }[];
-    const min = checks.find((c) => c.kind === 'min')?.value;
-    const max = checks.find((c) => c.kind === 'max')?.value;
-    const range = min !== undefined || max !== undefined ? ` [${min ?? '−∞'}, ${max ?? '∞'}]` : '';
-    label = `number${range}`;
+    const checks = inner._def.checks as { kind: string; value: number; inclusive?: boolean }[];
+    const isInt = checks.some((c) => c.kind === 'int');
+    const minChk = checks.find((c) => c.kind === 'min');
+    const maxChk = checks.find((c) => c.kind === 'max');
+    const lo = minChk ? `${minChk.inclusive === false ? '(' : '['}${minChk.value}` : '[−∞';
+    const hi = maxChk ? `${maxChk.value}${maxChk.inclusive === false ? ')' : ']'}` : '∞]';
+    const range = minChk || maxChk ? ` ${lo}, ${hi}` : '';
+    label = `${isInt ? 'integer' : 'number'}${range}`;
   }
   else if (t === 'ZodBoolean') label = 'boolean';
   else if (t === 'ZodArray') label = `array of ${describeType(inner._def.type)}`;
@@ -86,9 +89,13 @@ export function renderToolDoc(input: RenderInput): string {
     parts.push(`### \`${tool.name}\``, '');
     if (tool.description) parts.push(tool.description, '');
     parts.push('| Field | Type | Required |', '|---|---|---|', fieldRows(tool.schema), '');
-    const inv = input.invariants.schemaAttached[tool.name];
-    if (inv) parts.push(`**Invariant:** ${inv}`, '');
     parts.push('```json', JSON.stringify(tool.example, null, 2), '```', '');
+  }
+  const attached = Object.entries(input.invariants.schemaAttached);
+  if (attached.length) {
+    parts.push('### Cross-field invariants', '');
+    for (const [name, sentence] of attached) parts.push(`- **${name}:** ${sentence}`);
+    parts.push('');
   }
   if (input.invariants.external.length) {
     parts.push('### Rules enforced outside the schema', '');

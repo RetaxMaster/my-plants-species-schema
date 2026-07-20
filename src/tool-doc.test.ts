@@ -19,7 +19,7 @@ describe('renderToolDoc', () => {
     expect(md).toContain('# Demo');
     expect(md).toContain('| `name` | string | required |');
     expect(md).toContain('"type": "demo"');
-    expect(md).toContain('| `size` | number [1, 9] | optional |');
+    expect(md).toContain('| `size` | integer [1, 9] | optional |');
     expect(md).toContain('| `mode` | `a` \\| `b` | optional |');
     expect(md).toContain('| `tags` | array of string | optional |');
   });
@@ -44,6 +44,27 @@ describe('renderToolDoc', () => {
       title: 'x', tools: [{ name: 'bad', schema: z.string(), example: 'y' }],
       invariants: { schemaAttached: {}, external: [] },
     })).toThrow(/non-object/i);
+  });
+  it('renders every schemaAttached entry under a Cross-field invariants section, keyed by section name', () => {
+    const md = renderToolDoc({
+      title: 'Demo', tools: [{ name: 'demo', schema: flat, example: { type: 'demo', name: 'x' } }],
+      invariants: { schemaAttached: { demoSection: 'a <= b always' }, external: [] },
+    });
+    expect(md).toContain('### Cross-field invariants');
+    expect(md).toContain('- **demoSection:** a <= b always');
+  });
+  it('shows exclusive bounds for .positive() and inclusive bounds for .nonnegative()', () => {
+    const bounded = z.object({
+      type: z.literal('demo'),
+      posInt: z.number().int().positive(),
+      nonNeg: z.number().nonnegative(),
+    }).strict();
+    const md = renderToolDoc({
+      title: 'Demo', tools: [{ name: 'demo', schema: bounded, example: { type: 'demo', posInt: 1, nonNeg: 0 } }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `posInt` | integer (0, ∞] | required |');
+    expect(md).toContain('| `nonNeg` | number [0, ∞] | required |');
   });
 });
 
