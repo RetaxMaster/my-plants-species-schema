@@ -8,7 +8,7 @@ const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a YYYY-MM-DD calend
 
 const task = z.enum(FREQUENCY_BEARING_TASKS);
 const health = z.enum(PROGRESS_HEALTH_VALUES);
-const progressTag = z.enum(PROGRESS_TAG_KEYS as unknown as [string, ...string[]]);
+const progressTag = z.enum(PROGRESS_TAG_KEYS);
 
 const profileUpdate = plantProfileUpdateSchema.extend({ type: z.literal('profile.update') }).strict();
 const plantUpdate = z.object({
@@ -66,7 +66,7 @@ function writeSet(op: ProposalOperation): string[] {
   switch (op.type) {
     case 'profile.update': return Object.keys(op).filter((k) => k !== 'type').map((k) => `profile:${k}`);
     case 'plant.update': return Object.keys(op).filter((k) => k !== 'type').map((k) => `plant:${k}`);
-    case 'progress.create': return [];
+    case 'progress.create': return []; // a create has no pre-existing target, so two creates never collide
     case 'progress.update':
     case 'progress.delete': return [`entry:${op.entryId}`];
     case 'frequency.set':
