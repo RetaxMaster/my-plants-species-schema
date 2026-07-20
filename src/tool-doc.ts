@@ -27,8 +27,19 @@ export function unwrap(schema: z.ZodTypeAny): { inner: z.ZodTypeAny; optional: b
 export function describeType(schema: z.ZodTypeAny): string {
   const { inner, nullable } = unwrap(schema);
   const t = inner._def.typeName;
+  // A refined/superRefine'd node (ZodEffects) carries no shape of its own — describe the schema it wraps.
+  if (t === 'ZodEffects') {
+    const recursed = describeType(inner._def.schema);
+    return nullable ? `${recursed} \\| null` : recursed;
+  }
   let label: string;
   if (t === 'ZodEnum') label = (inner._def.values as string[]).map((v) => `\`${v}\``).join(' \\| ');
+  else if (t === 'ZodNativeEnum') {
+    label = Object.values(inner._def.values as Record<string, unknown>)
+      .filter((v) => typeof v === 'string')
+      .map((v) => `\`${String(v)}\``)
+      .join(' \\| ');
+  }
   else if (t === 'ZodLiteral') label = `\`${String(inner._def.value)}\``;
   else if (t === 'ZodString') label = 'string';
   else if (t === 'ZodNumber') {
@@ -65,6 +76,7 @@ function fieldRows(schema: z.ZodTypeAny): string {
 
 export function renderToolDoc(input: RenderInput): string {
   const parts: string[] = [];
+  parts.push(`# ${input.title}`, '');
   if (input.intro) parts.push(input.intro, '');
   for (const tool of input.tools) {
     const check = tool.schema.safeParse(tool.example);
@@ -127,6 +139,7 @@ export function syncToolDoc(input: SyncInput): SyncResult {
   if (input.mode === 'check') {
     return { problems: [current === null ? `${input.path} is MISSING — run: npm run tools:generate` : `${input.path} is STALE — run: npm run tools:generate`], wrote: false };
   }
+  const didWrite = Boolean(input.writer);
   input.writer?.(body);
-  return { problems: [], wrote: true };
+  return { problems: [], wrote: didWrite };
 }

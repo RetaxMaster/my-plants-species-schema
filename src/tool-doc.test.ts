@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { assertInvariantsCover, GENERATED_MARKER, renderToolDoc, syncToolDoc } from './tool-doc.js';
 
-const flat = z.object({ type: z.literal('demo'), name: z.string(), size: z.number().int().min(1).max(9).optional() }).strict();
+const flat = z.object({
+  type: z.literal('demo'),
+  name: z.string(),
+  size: z.number().int().min(1).max(9).optional(),
+  mode: z.enum(['a', 'b']).optional(),
+  tags: z.array(z.string()).optional(),
+}).strict();
 
 describe('renderToolDoc', () => {
   it('renders a field table with required/optional + a validated example', () => {
@@ -10,14 +16,34 @@ describe('renderToolDoc', () => {
       title: 'Demo', tools: [{ name: 'demo', schema: flat, example: { type: 'demo', name: 'x', size: 3 } }],
       invariants: { schemaAttached: {}, external: [] },
     });
+    expect(md).toContain('# Demo');
     expect(md).toContain('| `name` | string | required |');
     expect(md).toContain('"type": "demo"');
+    expect(md).toContain('| `size` | number [1, 9] | optional |');
+    expect(md).toContain('| `mode` | `a` \\| `b` | optional |');
+    expect(md).toContain('| `tags` | array of string | optional |');
   });
   it('throws when an example does not satisfy its schema', () => {
     expect(() => renderToolDoc({
       title: 'Demo', tools: [{ name: 'demo', schema: flat, example: { type: 'demo' } }],
       invariants: { schemaAttached: {}, external: [] },
     })).toThrow(/example.*demo.*invalid/i);
+  });
+  it('reports "object" (not the ZodEffects internal name) for a refined+defaulted object section', () => {
+    const misting = z.object({ frequency: z.string() }).refine((v) => v.frequency.length > 0).default({ frequency: 'weekly' });
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{ name: 'demo', schema: z.object({ type: z.literal('demo'), misting }).strict(), example: { type: 'demo' } }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `misting` | object | optional |');
+    expect(md).not.toContain('effects');
+  });
+  it('throws a non-object error for a non-object tool schema', () => {
+    expect(() => renderToolDoc({
+      title: 'x', tools: [{ name: 'bad', schema: z.string(), example: 'y' }],
+      invariants: { schemaAttached: {}, external: [] },
+    })).toThrow(/non-object/i);
   });
 });
 
@@ -34,6 +60,10 @@ describe('assertInvariantsCover', () => {
   });
   it('passes when refine and map entry agree', () => {
     expect(() => assertInvariantsCover({ demo: refined }, { schemaAttached: { demo: 'min<=max' }, external: [] })).not.toThrow();
+  });
+  it('detects a refine wrapped in .default()', () => {
+    const wrapped = z.object({ a: z.number(), b: z.number() }).refine((v) => v.a <= v.b).default({ a: 0, b: 0 });
+    expect(() => assertInvariantsCover({ demo: wrapped }, { schemaAttached: {}, external: [] })).toThrow(/undocumented invariant/i);
   });
 });
 
