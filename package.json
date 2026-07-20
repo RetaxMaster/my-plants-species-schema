@@ -37,6 +37,10 @@
     "./feedback-reason-constants": {
       "types": "./dist/feedback-reason-constants.d.ts",
       "import": "./dist/feedback-reason-constants.js"
+    },
+    "./tool-doc": {
+      "types": "./dist/tool-doc.d.ts",
+      "import": "./dist/tool-doc.js"
     }
   },
   "files": [

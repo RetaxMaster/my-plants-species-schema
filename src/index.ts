@@ -13,3 +13,5 @@ export * from './feedback-reason.js';
 export * from './image-limits.js';
 export * from './photo-contract-constants.js';
 export * from './progress-tag-constants.js';
+export * from './care-operations-constants.js';
+export * from './proposal-operations.js';
