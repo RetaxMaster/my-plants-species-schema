@@ -66,6 +66,19 @@ describe('renderToolDoc', () => {
     expect(md).toContain('| `posInt` | integer (0, ∞] | required |');
     expect(md).toContain('| `nonNeg` | number [0, ∞] | required |');
   });
+  it('renders a one-level sub-table for an object field, exposing nested enum vocabularies', () => {
+    const nested = z.object({
+      type: z.literal('demo'),
+      section: z.object({ mode: z.enum(['a', 'b', 'c']), n: z.number().int().min(1) }),
+    }).strict();
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{ name: 'demo', schema: nested, example: { type: 'demo', section: { mode: 'a', n: 1 } } }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('#### `section`');
+    expect(md).toContain('| `mode` | `a` \\| `b` \\| `c` | required |');
+  });
 });
 
 const refined = z.object({ min: z.number(), max: z.number() }).refine((v) => v.min <= v.max, { message: 'min<=max' });

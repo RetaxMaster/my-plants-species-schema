@@ -77,6 +77,25 @@ function fieldRows(schema: z.ZodTypeAny): string {
   return rows.join('\n');
 }
 
+/** One-level sub-tables: for each object-typed field of `schema`, render its own field table. Does not
+ * recurse past one level (a nested object's nested objects render only as `object`), which is enough to
+ * surface a section's enum vocabularies and numeric bounds without unbounded expansion. */
+function subTables(schema: z.ZodTypeAny): string[] {
+  const shape = objectShape(schema);
+  const out: string[] = [];
+  for (const [key, field] of Object.entries(shape)) {
+    if (key === 'type') continue;
+    const { inner } = unwrap(field);
+    const isObject =
+      inner._def.typeName === 'ZodObject' ||
+      (inner._def.typeName === 'ZodEffects' && inner._def.schema?._def?.typeName === 'ZodObject');
+    if (isObject) {
+      out.push(`#### \`${key}\``, '', '| Field | Type | Required |', '|---|---|---|', fieldRows(field), '');
+    }
+  }
+  return out;
+}
+
 export function renderToolDoc(input: RenderInput): string {
   const parts: string[] = [];
   parts.push(`# ${input.title}`, '');
@@ -89,6 +108,7 @@ export function renderToolDoc(input: RenderInput): string {
     parts.push(`### \`${tool.name}\``, '');
     if (tool.description) parts.push(tool.description, '');
     parts.push('| Field | Type | Required |', '|---|---|---|', fieldRows(tool.schema), '');
+    parts.push(...subTables(tool.schema));
     parts.push('```json', JSON.stringify(tool.example, null, 2), '```', '');
   }
   const attached = Object.entries(input.invariants.schemaAttached);
