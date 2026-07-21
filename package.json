@@ -41,6 +41,10 @@
     "./tool-doc": {
       "types": "./dist/tool-doc.d.ts",
       "import": "./dist/tool-doc.js"
+    },
+    "./agent-capabilities": {
+      "types": "./dist/agent-capabilities.d.ts",
+      "import": "./dist/agent-capabilities.js"
     }
   },
   "files": [

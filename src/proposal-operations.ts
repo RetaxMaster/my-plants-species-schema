@@ -60,7 +60,7 @@ export type ProposalOperationType = ProposalOperation['type'];
  * Derived — never hand-listed — so a new member cannot be forgotten by a consumer that indexes by type.
  */
 export const PROPOSAL_OPERATION_TYPES: readonly ProposalOperationType[] = (
-  (operationSchema as unknown as { _def: { schema: { options: { shape: { type: { _def: { value: ProposalOperationType } } } } }[] } })
+  (operationSchema as unknown as { _def: { schema: { options: { shape: { type: { _def: { value: ProposalOperationType } } } }[] } } })
     ._def.schema.options
 ).map((m) => m.shape.type._def.value);
 
