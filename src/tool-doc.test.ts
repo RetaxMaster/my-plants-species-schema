@@ -148,4 +148,27 @@ describe('renderToolDoc field omission (spec §4.3)', () => {
     expect(md).toContain('"nickname": "Randy"');
     expect(md).not.toContain('placeId');
   });
+
+  it('omits an omitFields key that is an object field, dropping its sub-table entirely', () => {
+    const withPlaceObject = z.object({
+      type: z.literal('plant.update'),
+      nickname: z.string().optional(),
+      place: z.object({ placeId: z.string(), zone: z.enum(['indoor', 'outdoor']) }).optional(),
+    }).strict();
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{
+        name: 'plant.update',
+        schema: withPlaceObject,
+        example: { type: 'plant.update', nickname: 'Randy' },
+        omitFields: ['place'],
+      }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `nickname` |');
+    expect(md).not.toContain('#### `place`');
+    expect(md).not.toContain('placeId');
+    expect(md).not.toContain('zone');
+    expect(md).not.toContain('indoor');
+  });
 });

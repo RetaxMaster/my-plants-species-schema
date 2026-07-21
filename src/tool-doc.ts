@@ -101,6 +101,8 @@ function subTables(schema: z.ZodTypeAny, omit: readonly string[] = []): string[]
       inner._def.typeName === 'ZodObject' ||
       (inner._def.typeName === 'ZodEffects' && inner._def.schema?._def?.typeName === 'ZodObject');
     if (isObject) {
+      // No `omit` passed here: the omit set is top-level-only, and an omitted object field's sub-table
+      // is already skipped by the loop guard above before this line is ever reached.
       out.push(`#### \`${key}\``, '', '| Field | Type | Required |', '|---|---|---|', fieldRows(field), '');
     }
   }
