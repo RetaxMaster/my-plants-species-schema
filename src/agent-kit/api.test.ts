@@ -32,8 +32,8 @@ describe('createApiClient', () => {
     expect(out).toEqual({ id: 'prop-1', status: 'PENDING' });
   });
 
-  // The doctor's token is 403 on every domain-mutating endpoint (API phase 2), so a put/patch/delete
-  // method is not merely unused — having one invites a call that can only ever fail. Pin the surface.
+  // An agent's token is 403 on every domain-mutating endpoint, so a put/patch/delete method is not
+  // merely unused — having one invites a call that can only ever fail. Pin the surface.
   it('exposes ONLY the read + propose surface — no direct-write method survives', () => {
     const client = createApiClient(ctx, vi.fn());
     expect(Object.keys(client).sort()).toEqual(['getJson', 'postJson']);
@@ -55,7 +55,7 @@ describe('createApiClient', () => {
   });
 
   // A 409 is the propose endpoint's contractual answer to "a newer proposal superseded yours" and it
-  // carries a terminal `status` the agent must be able to read (API phase 3). Prove the body survives.
+  // carries a terminal `status` the agent must be able to read. Prove the body survives.
   it('surfaces a 409 conflict body so the agent can report the terminal status', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(409, { message: 'no longer pending', status: 'EXPIRED' }));
     const client = createApiClient(ctx, fetchImpl);
