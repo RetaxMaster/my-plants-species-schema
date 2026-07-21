@@ -36,7 +36,7 @@ const CODEX_AGENT_NAME = /^[a-z][a-z0-9_]*$/;
 
 /**
  * The `tools` → `sandbox_mode` map, keyed by the SORTED, comma-joined tool set.
- * Total over what THIS repo uses. An unknown set fails the generator — a sandbox is never guessed.
+ * Total over what every consumer currently declares. An unknown set fails the generator — a sandbox is never guessed.
  *
  * Tool sets are declared per role in each repo's own `.claude/agents/*.md` front matter; this projector
  * only translates them. Both existing agent repos declare exclusively READ-ONLY tool sets (Read,
@@ -64,7 +64,7 @@ export function sandboxModeForTools(tools: string[], sourceFile: string): CodexS
   if (!mode) {
     throw new Error(
       `${sourceFile}: unknown tools set [${tools.join(", ")}] — no sandbox_mode is mapped for it. ` +
-        `The generator never guesses a sandbox: add the set to SANDBOX_BY_TOOLS in scripts/lib/codex-agent.ts.`,
+        `The generator never guesses a sandbox: add the set to SANDBOX_BY_TOOLS in src/agent-kit/codex-parity/codex-agent.ts.`,
     );
   }
   return mode;
