@@ -61,7 +61,11 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "execa": "^9.6.1",
+    "mysql2": "^3.11.3",
+    "smol-toml": "^1.7.0",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^2.0.5",
+    "yaml": "^2.9.0"
   }
 }
