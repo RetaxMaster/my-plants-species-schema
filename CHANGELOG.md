@@ -10,7 +10,7 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
-- **The Plant Doctor proposal-operations contract now lives here.** The discriminated union of the eight
+- **The Plant Doctor proposal-operations contract now lives here.** The discriminated union of the ten
   proposal operations (`operationSchema` / `createProposalSchema`) plus its pure helpers
   (`findOverlappingWriteSet`, `serializedBytes`) moved into this package as framework-agnostic Zod, so the
   API and the Plant Doctor validate proposals against **one** definition instead of a hand-maintained copy.
@@ -23,7 +23,7 @@ changed for whoever depends on this package, not a commit dump.
   "tripwire" that fails the build if a cross-field invariant is added without documenting it — behind a
   marker-protected write/check harness. The embedded agent repos use it to generate their `AGENT-TOOLS.md`.
 - **A per-agent-role capability map**, at the new `./agent-capabilities` subpath. For each agent role
-  (`doctor`, `gardener`) and each of the eight proposal operations, it states whether that role may propose
+  (`doctor`, `gardener`) and each of the ten proposal operations, it states whether that role may propose
   the operation at all and, for an operation it may propose, which of its fields it may **not** set —
   concretely, a `doctor`-scoped `plant.update` may no longer carry `placeId`. Consumers call `mayPropose()`
   and `forbiddenFieldsIn()` instead of hand-rolling the same allow/deny logic per agent repo, and a bundled
