@@ -111,3 +111,41 @@ describe('syncToolDoc', () => {
     expect(r.problems[0]).toMatch(/stale/i);
   });
 });
+
+describe('renderToolDoc field omission (spec §4.3)', () => {
+  const withPlace = z.object({
+    type: z.literal('plant.update'),
+    nickname: z.string().optional(),
+    placeId: z.string().optional(),
+  }).strict();
+
+  it('omits an omitFields key from the field table', () => {
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{ name: 'plant.update', schema: withPlace, example: { type: 'plant.update', nickname: 'Randy' }, omitFields: ['placeId'] }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `nickname` |');
+    expect(md).not.toContain('placeId');
+  });
+
+  it('still documents the field when nothing is omitted', () => {
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{ name: 'plant.update', schema: withPlace, example: { type: 'plant.update', nickname: 'Randy' } }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `placeId` | string | optional |');
+  });
+
+  it('omits the field from the JSON example as well as the table', () => {
+    const md = renderToolDoc({
+      title: 'Demo',
+      // The example is still validated against the FULL schema — filtering is a rendering concern.
+      tools: [{ name: 'plant.update', schema: withPlace, example: { type: 'plant.update', nickname: 'Randy', placeId: 'p1' }, omitFields: ['placeId'] }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('"nickname": "Randy"');
+    expect(md).not.toContain('placeId');
+  });
+});

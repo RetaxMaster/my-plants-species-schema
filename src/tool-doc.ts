@@ -6,7 +6,18 @@ export interface InvariantMap {
   /** free-text invariants NOT attached to a ZodEffects (e.g. rules enforced outside the schema). */
   external: string[];
 }
-export interface ToolSpec { name: string; schema: z.ZodTypeAny; example: unknown; description?: string; }
+export interface ToolSpec {
+  name: string;
+  schema: z.ZodTypeAny;
+  example: unknown;
+  description?: string;
+  /**
+   * Field keys this tool's audience may NOT use, even though the shared schema defines them. Fed from
+   * the capability map (spec §4.3/§4.4). Filtering by operation TYPE alone is not enough: a doc that
+   * still advertises `placeId` teaches the agent about a field the API answers with VALIDATION.
+   */
+  omitFields?: readonly string[];
+}
 export interface RenderInput { title: string; intro?: string; tools: ToolSpec[]; invariants: InvariantMap; }
 
 /** Peel ZodDefault / ZodOptional / ZodNullable to reach the underlying type; report what we peeled. */
@@ -66,11 +77,11 @@ function objectShape(schema: z.ZodTypeAny): z.ZodRawShape {
   throw new Error(`tool-doc: cannot introspect a non-object tool schema (${inner._def.typeName}).`);
 }
 
-function fieldRows(schema: z.ZodTypeAny): string {
+function fieldRows(schema: z.ZodTypeAny, omit: readonly string[] = []): string {
   const shape = objectShape(schema);
   const rows: string[] = [];
   for (const [key, field] of Object.entries(shape)) {
-    if (key === 'type') continue;
+    if (key === 'type' || omit.includes(key)) continue;
     const { optional } = unwrap(field);
     rows.push(`| \`${key}\` | ${describeType(field)} | ${optional ? 'optional' : 'required'} |`);
   }
@@ -80,11 +91,11 @@ function fieldRows(schema: z.ZodTypeAny): string {
 /** One-level sub-tables: for each object-typed field of `schema`, render its own field table. Does not
  * recurse past one level (a nested object's nested objects render only as `object`), which is enough to
  * surface a section's enum vocabularies and numeric bounds without unbounded expansion. */
-function subTables(schema: z.ZodTypeAny): string[] {
+function subTables(schema: z.ZodTypeAny, omit: readonly string[] = []): string[] {
   const shape = objectShape(schema);
   const out: string[] = [];
   for (const [key, field] of Object.entries(shape)) {
-    if (key === 'type') continue;
+    if (key === 'type' || omit.includes(key)) continue;
     const { inner } = unwrap(field);
     const isObject =
       inner._def.typeName === 'ZodObject' ||
@@ -93,6 +104,14 @@ function subTables(schema: z.ZodTypeAny): string[] {
       out.push(`#### \`${key}\``, '', '| Field | Type | Required |', '|---|---|---|', fieldRows(field), '');
     }
   }
+  return out;
+}
+
+/** Strips withheld top-level keys from the printed example. Rendering only — validation is untouched. */
+function exampleForDoc(example: unknown, omit: readonly string[] = []): unknown {
+  if (omit.length === 0 || example === null || typeof example !== 'object' || Array.isArray(example)) return example;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(example as Record<string, unknown>)) if (!omit.includes(k)) out[k] = v;
   return out;
 }
 
@@ -107,9 +126,9 @@ export function renderToolDoc(input: RenderInput): string {
     }
     parts.push(`### \`${tool.name}\``, '');
     if (tool.description) parts.push(tool.description, '');
-    parts.push('| Field | Type | Required |', '|---|---|---|', fieldRows(tool.schema), '');
-    parts.push(...subTables(tool.schema));
-    parts.push('```json', JSON.stringify(tool.example, null, 2), '```', '');
+    parts.push('| Field | Type | Required |', '|---|---|---|', fieldRows(tool.schema, tool.omitFields), '');
+    parts.push(...subTables(tool.schema, tool.omitFields));
+    parts.push('```json', JSON.stringify(exampleForDoc(tool.example, tool.omitFields), null, 2), '```', '');
   }
   const attached = Object.entries(input.invariants.schemaAttached);
   if (attached.length) {
