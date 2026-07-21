@@ -38,3 +38,8 @@ changed for whoever depends on this package, not a commit dump.
   dependencies (`mysql2`, `execa`, `yaml`, `smol-toml`) are declared as **optional peer dependencies**: a
   plain `npm install` of this package (as `my-plants-api` and `my-plants-web` do) pulls in none of them; an
   agent repo that already depends on them directly is unaffected.
+- **Two new proposal operations for clinical records.** `clinical_record.create` and `clinical_record.update`
+  join the union (now ten operations in total), covering a doctor-authored, day-scoped Markdown case note
+  capped at 20,000 characters. Both are classified **doctor-only** in the capability map, and a proposal that
+  carries two clinical-record operations together is rejected outright — a plant has at most one such record
+  per calendar day, so two in one proposal can only be redundant or contradictory.
