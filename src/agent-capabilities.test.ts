@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { PROPOSAL_OPERATION_TYPES } from './proposal-operations.js';
-import { AGENT_SCOPES, AGENT_CAPABILITIES, mayPropose, omittedFieldsFor, forbiddenFieldsIn } from './agent-capabilities.js';
+import {
+  AGENT_SCOPES,
+  AGENT_CAPABILITIES,
+  mayPropose,
+  omittedFieldsFor,
+  forbiddenFieldsIn,
+  permittedTypesFor,
+} from './agent-capabilities.js';
 
 describe('the capability map', () => {
   // Spec §11.3: a NEW operation must not silently default to allowed-for-all or allowed-for-nobody.
@@ -37,5 +44,20 @@ describe('the asymmetric and field-level rules', () => {
     expect(forbiddenFieldsIn('doctor', { type: 'plant.update', nickname: 'Randy' } as never)).toEqual([]);
     expect(forbiddenFieldsIn('doctor', { type: 'plant.update', placeId: 'p1' } as never)).toEqual(['placeId']);
     expect(forbiddenFieldsIn('gardener', { type: 'plant.update', placeId: 'p1' } as never)).toEqual([]);
+  });
+});
+
+describe('permittedTypesFor', () => {
+  // §4.3 names this the denominator for doc + i18n parity, so both the exclusion and the declaration
+  // order it returns in are load-bearing, not incidental.
+  it('returns the union-ordered subset each scope may propose', () => {
+    expect(permittedTypesFor('doctor')).toEqual([
+      'profile.update', 'plant.update', 'progress.create', 'progress.update',
+      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
+    ]);
+    expect(permittedTypesFor('gardener')).toEqual([
+      'profile.update', 'plant.update', 'progress.create', 'progress.update',
+      'frequency.set', 'frequency.clear', 'care.done',
+    ]);
   });
 });

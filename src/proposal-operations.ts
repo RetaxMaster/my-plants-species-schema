@@ -54,15 +54,38 @@ export type ProposalOperation = z.infer<typeof operationSchema>;
 
 export type ProposalOperationType = ProposalOperation['type'];
 
+type DiscriminantMember = { shape: { type: { _def: { value: string } } } };
+
+/**
+ * Reads the discriminated union's members out of `operationSchema`'s zod internals, validating the
+ * shape before dereferencing it — a zod patch inside the existing `^3.23.8` range, or a future
+ * `.transform()` wrapping the union, would otherwise throw a bare "Cannot read properties of undefined"
+ * at MODULE LOAD, taking down the whole package import (this module is re-exported from `./index.js`)
+ * for every consumer, not just this export. Mirrors `tool-doc.ts`'s `objectShape` convention: check the
+ * shape explicitly, throw a named, descriptive error before going further. Exported so the guard itself
+ * can be exercised with a malformed schema.
+ */
+export function discriminatedUnionMembers(schema: z.ZodTypeAny): DiscriminantMember[] {
+  const options = (schema as unknown as { _def?: { schema?: { options?: unknown } } })._def?.schema?.options;
+  const valid = Array.isArray(options) && options.length > 0 && options.every(
+    (m) => typeof (m as { shape?: { type?: { _def?: { value?: unknown } } } })?.shape?.type?._def?.value === 'string',
+  );
+  if (!valid) {
+    throw new Error(
+      'proposal-operations: operationSchema\'s internal shape changed — expected a ZodEffects wrapping a ' +
+        'ZodDiscriminatedUnion with literal `type` members at _def.schema.options',
+    );
+  }
+  return options as DiscriminantMember[];
+}
+
 /**
  * The union's discriminants, at RUNTIME. `operationSchema` is a ZodEffects wrapping the
  * discriminatedUnion (the superRefine above), so the members live at `_def.schema.options`.
  * Derived — never hand-listed — so a new member cannot be forgotten by a consumer that indexes by type.
  */
-export const PROPOSAL_OPERATION_TYPES: readonly ProposalOperationType[] = (
-  (operationSchema as unknown as { _def: { schema: { options: { shape: { type: { _def: { value: ProposalOperationType } } } }[] } } })
-    ._def.schema.options
-).map((m) => m.shape.type._def.value);
+export const PROPOSAL_OPERATION_TYPES: readonly ProposalOperationType[] = discriminatedUnionMembers(operationSchema)
+  .map((m) => m.shape.type._def.value) as ProposalOperationType[];
 
 export const MAX_OPERATIONS = 10;
 export const MAX_SUMMARY_CHARS = 500;
