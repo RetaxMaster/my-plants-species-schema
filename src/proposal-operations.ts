@@ -40,7 +40,12 @@ const frequencyClear = z.object({ type: z.literal('frequency.clear'), task }).st
 const careDone = z.object({ type: z.literal('care.done'), task, occurredOn: ymd }).strict();
 
 // Mirrors the owner's own CreatePlaceDto (api src/places/create-place.dto.ts) field for field — the agent
-// must never be able to create a shape the owner's own form cannot.
+// must never be able to create a shape the owner's own form cannot. One narrowing, deliberately kept
+// narrower than the DTO rather than matched to it: the DTO's optional condition fields also accept an
+// explicit `null` (class-validator's @IsOptional() skips validation on null too), but here they are plain
+// `.optional()`, never `.nullable()`. On a CREATE there is no existing value to clear, so an agent expresses
+// "unset" by omitting the field; `null` only becomes meaningful on `place.update`, where it clears a value
+// that already exists.
 const placeCreate = z.object({
   type: z.literal('place.create'),
   cityId: z.string().min(1),
@@ -54,7 +59,7 @@ const placeCreate = z.object({
   airflow: airflowEnum.optional(),
 }).strict();
 
-// Mirrors UpdatePlaceDto (api src/places/update-place.dto.ts:9-18) EXACTLY: name/climateControlled/lightType
+// Mirrors UpdatePlaceDto (api src/places/update-place.dto.ts:9-17) EXACTLY: name/climateControlled/lightType
 // are optional-not-nullable; humidityCharacter/airflow/indoorTemp* are nullable (null clears). `indoor` and
 // `cityId` are deliberately ABSENT — they are create-only for the owner too (create-place.dto.ts), and the
 // agent must never exceed the owner's own reach.
@@ -81,6 +86,11 @@ const cityCreate = z.object({
   timezone: z.string().min(1).max(64),
 }).strict();
 
+// Unlike every other operation in this union, this is NOT a mirror of an owner-facing DTO — there is no
+// `UpdateCityDto` and no update route: `api src/cities/cities.controller.ts` exposes only
+// list/search/create/get/make-primary. The grant is deliberate, not an oversight (Spec 4 §5.2): the write
+// core `updateCityCore` was extracted specifically so the gardener's proposal applier could be its only
+// caller, giving the agent a capability the owner's own app has no path to today.
 const cityUpdate = z.object({
   type: z.literal('city.update'),
   cityId: z.string().min(1),
@@ -229,6 +239,10 @@ function writeSet(op: ProposalOperation): string[] {
     // Do not "fix" this back to [].
     case 'clinical_record.create':
     case 'clinical_record.update': return ['clinical:record'];
+    // Unlike `plant.update`/`profile.update` above, the key embeds the target id (`place:<id>:<field>`,
+    // not `place:<field>`): those two run inside a session already scoped to ONE plant, so the field name
+    // alone is unambiguous, but a garden-wide gardener proposal can legitimately touch several DIFFERENT
+    // places or cities in one batch — dropping the id would make edits to two unrelated places collide.
     case 'place.update': return Object.keys(op).filter((k) => k !== 'type' && k !== 'placeId').map((k) => `place:${op.placeId}:${k}`);
     case 'city.update': return Object.keys(op).filter((k) => k !== 'type' && k !== 'cityId').map((k) => `city:${op.cityId}:${k}`);
     // Creates have no pre-existing target, so two creates never collide (same rule as progress.create).
