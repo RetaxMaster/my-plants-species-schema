@@ -90,6 +90,16 @@ const cityUpdate = z.object({
   timezone: z.string().min(1).max(64).optional(),
 }).strict();
 
+// Mirrors CreatePlantDto (api src/plants/create-plant.dto.ts) minus `lastDone`: seeding historical DONE
+// events is an owner-form affordance for a plant they already owned, not something an agent should author.
+const plantCreate = z.object({
+  type: z.literal('plant.create'),
+  speciesSlug: z.string().min(1),
+  placeId: z.string().min(1),
+  nickname: z.string().max(120).nullable().optional(),
+  acquiredOn: ymd,
+}).strict();
+
 /**
  * A clinical record body is Markdown and is by far the largest single operation this union carries.
  * The cap is per-field and deliberately smaller than the envelope: ONE max-size record serializes to
@@ -138,7 +148,7 @@ const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
 const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;

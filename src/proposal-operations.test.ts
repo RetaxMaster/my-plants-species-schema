@@ -135,7 +135,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
       'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
-      'city.create', 'city.update',
+      'city.create', 'city.update', 'plant.create',
     ]);
   });
 });
@@ -180,6 +180,10 @@ describe('single-operation serialization bound', () => {
     'city.update': {
       type: 'city.update', cityId: 'c'.repeat(64), name: 'n'.repeat(120), latitude: 20.67,
       longitude: -103.35, timezone: 'America/Mexico_City',
+    },
+    'plant.create': {
+      type: 'plant.create', speciesSlug: 'nephrolepis-biserrata', placeId: 'p'.repeat(64),
+      nickname: 'n'.repeat(120), acquiredOn: '2026-07-20',
     },
   };
 
@@ -276,5 +280,21 @@ describe('city operations', () => {
   it('accepts a partial city.update and rejects a target-only one', () => {
     expect(operationSchema.safeParse({ type: 'city.update', cityId: 'C1', timezone: 'UTC' }).success).toBe(true);
     expect(operationSchema.safeParse({ type: 'city.update', cityId: 'C1' }).success).toBe(false);
+  });
+});
+
+describe('plant.create', () => {
+  const p = { type: 'plant.create', speciesSlug: 'nephrolepis-biserrata', placeId: 'P1', acquiredOn: '2026-07-20' };
+  it('accepts the minimal payload', () => {
+    expect(operationSchema.safeParse(p).success).toBe(true);
+  });
+  it('accepts an optional nickname', () => {
+    expect(operationSchema.safeParse({ ...p, nickname: 'Randy' }).success).toBe(true);
+  });
+  it('rejects an ISO instant for acquiredOn', () => {
+    expect(operationSchema.safeParse({ ...p, acquiredOn: '2026-07-20T00:00:00Z' }).success).toBe(false);
+  });
+  it('has NO lastDone seeding — that is an owner-form affordance, not an agent one', () => {
+    expect(operationSchema.safeParse({ ...p, lastDone: [] }).success).toBe(false);
   });
 });
