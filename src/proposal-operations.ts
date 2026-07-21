@@ -75,7 +75,7 @@ const IDENTITY_KEYS = new Set(['type', 'entryId', 'task']);
 const REQUIRES_A_FIELD = new Set(['profile.update', 'plant.update', 'progress.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const writes = Object.keys(op).filter((k) => !IDENTITY_KEYS.has(k));

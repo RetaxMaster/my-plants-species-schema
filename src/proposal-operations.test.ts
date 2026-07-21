@@ -103,6 +103,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
     expect(PROPOSAL_OPERATION_TYPES).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
+      'clinical_record.create', 'clinical_record.update',
     ]);
   });
 });
