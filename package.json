@@ -1,6 +1,6 @@
 {
   "name": "@retaxmaster/my-plants-species-schema",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Shared curated plant-species data contract for MyPlants.",
   "type": "module",
   "main": "./dist/index.js",
@@ -45,11 +45,39 @@
     "./agent-capabilities": {
       "types": "./dist/agent-capabilities.d.ts",
       "import": "./dist/agent-capabilities.js"
+    },
+    "./agent-kit/workspace": {
+      "types": "./dist/agent-kit/workspace.d.ts",
+      "import": "./dist/agent-kit/workspace.js"
+    },
+    "./agent-kit/api": {
+      "types": "./dist/agent-kit/api.d.ts",
+      "import": "./dist/agent-kit/api.js"
+    },
+    "./agent-kit/db": {
+      "types": "./dist/agent-kit/db.d.ts",
+      "import": "./dist/agent-kit/db.js"
+    },
+    "./agent-kit/codex-parity": {
+      "types": "./dist/agent-kit/codex-parity/index.d.ts",
+      "import": "./dist/agent-kit/codex-parity/index.js"
+    },
+    "./agent-kit/codex-parity/repo-checks": {
+      "types": "./dist/agent-kit/codex-parity/repo-checks.d.ts",
+      "import": "./dist/agent-kit/codex-parity/repo-checks.js"
+    },
+    "./agent-kit/guide-pair": {
+      "types": "./dist/agent-kit/guide-pair.d.ts",
+      "import": "./dist/agent-kit/guide-pair.js"
     }
   },
   "files": [
     "dist"
   ],
+  "bin": {
+    "agent-kit-codex-agents": "./dist/agent-kit/cli/generate-codex-agents.js",
+    "agent-kit-codex-spawn-schema": "./dist/agent-kit/cli/check-codex-spawn-schema.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
@@ -58,6 +86,18 @@
   },
   "dependencies": {
     "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "mysql2": "^3.11.3",
+    "execa": "^9.6.1",
+    "yaml": "^2.9.0",
+    "smol-toml": "^1.7.0"
+  },
+  "peerDependenciesMeta": {
+    "mysql2": { "optional": true },
+    "execa": { "optional": true },
+    "yaml": { "optional": true },
+    "smol-toml": { "optional": true }
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
