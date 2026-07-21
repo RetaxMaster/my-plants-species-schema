@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { plantProfileUpdateSchema } from './plant-profile.js';
 import { PROGRESS_TAG_KEYS } from './progress-tag-constants.js';
 import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM } from './care-operations-constants.js';
+import { airflowEnum, humidityCharacterEnum, lightTypeEnum } from './place.js';
 
 /** Calendar date, per the project's date rules. NEVER an ISO instant. */
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a YYYY-MM-DD calendar date');
@@ -37,6 +38,21 @@ const progressDelete = z.object({ type: z.literal('progress.delete'), entryId: z
 const frequencySet = z.object({ type: z.literal('frequency.set'), task, intervalDays: z.number().int().min(1).max(3650) }).strict();
 const frequencyClear = z.object({ type: z.literal('frequency.clear'), task }).strict();
 const careDone = z.object({ type: z.literal('care.done'), task, occurredOn: ymd }).strict();
+
+// Mirrors the owner's own CreatePlaceDto (api src/places/create-place.dto.ts) field for field — the agent
+// must never be able to create a shape the owner's own form cannot.
+const placeCreate = z.object({
+  type: z.literal('place.create'),
+  cityId: z.string().min(1),
+  name: z.string().min(1).max(120),
+  indoor: z.boolean(),
+  lightType: lightTypeEnum,
+  climateControlled: z.boolean().optional(),
+  humidityCharacter: humidityCharacterEnum.optional(),
+  indoorTempMinC: z.number().optional(),
+  indoorTempMaxC: z.number().optional(),
+  airflow: airflowEnum.optional(),
+}).strict();
 
 /**
  * A clinical record body is Markdown and is by far the largest single operation this union carries.
@@ -84,7 +100,7 @@ const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
 const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;

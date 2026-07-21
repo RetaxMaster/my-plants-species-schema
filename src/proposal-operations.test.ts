@@ -134,7 +134,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
     expect(PROPOSAL_OPERATION_TYPES).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
-      'clinical_record.create', 'clinical_record.update',
+      'clinical_record.create', 'clinical_record.update', 'place.create',
     ]);
   });
 });
@@ -162,6 +162,11 @@ describe('single-operation serialization bound', () => {
     'care.done': { type: 'care.done', task: 'WATER', occurredOn: '2026-07-20' },
     'clinical_record.create': { type: 'clinical_record.create', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS), recordedOn: '2026-07-20' },
     'clinical_record.update': { type: 'clinical_record.update', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS) },
+    'place.create': {
+      type: 'place.create', cityId: 'c'.repeat(64), name: 'n'.repeat(120), indoor: true,
+      lightType: 'BRIGHT_INDIRECT', climateControlled: true, humidityCharacter: 'HUMID',
+      indoorTempMinC: 18, indoorTempMaxC: 30, airflow: 'breezy',
+    },
   };
 
   const unionTypes = operationSchema.innerType().options.map(
@@ -206,5 +211,22 @@ describe('clinical record operations', () => {
       operationSchema.safeParse({ type: 'clinical_record.update', body: '# Revised', recordedOn: '2026-07-20' })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('place.create', () => {
+  const valid = {
+    type: 'place.create', cityId: 'CITY_1', name: 'Study window', indoor: true,
+    lightType: 'BRIGHT_INDIRECT', climateControlled: false, humidityCharacter: 'NORMAL',
+    indoorTempMinC: 18, indoorTempMaxC: 24, airflow: 'some',
+  };
+  it('accepts the full payload', () => {
+    expect(operationSchema.safeParse(valid).success).toBe(true);
+  });
+  it('requires cityId, name, indoor and lightType', () => {
+    expect(operationSchema.safeParse({ type: 'place.create', name: 'x' }).success).toBe(false);
+  });
+  it('rejects an unknown light type', () => {
+    expect(operationSchema.safeParse({ ...valid, lightType: 'BLINDING' }).success).toBe(false);
   });
 });
