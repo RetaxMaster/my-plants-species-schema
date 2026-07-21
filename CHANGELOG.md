@@ -22,3 +22,19 @@ changed for whoever depends on this package, not a commit dump.
   example per tool, one-level sub-tables that expose nested-section vocabularies, and a `.refine()`
   "tripwire" that fails the build if a cross-field invariant is added without documenting it — behind a
   marker-protected write/check harness. The embedded agent repos use it to generate their `AGENT-TOOLS.md`.
+- **A per-agent-role capability map**, at the new `./agent-capabilities` subpath. For each agent role
+  (`doctor`, `gardener`) and each of the eight proposal operations, it states whether that role may propose
+  the operation at all and, for an operation it may propose, which of its fields it may **not** set —
+  concretely, a `doctor`-scoped `plant.update` may no longer carry `placeId`. Consumers call `mayPropose()`
+  and `forbiddenFieldsIn()` instead of hand-rolling the same allow/deny logic per agent repo, and a bundled
+  check (`assertOmitFieldsAreRealFields`) fails the build if a withheld field name doesn't actually exist on
+  its operation's schema.
+- **The shared agent-side scaffolding**, at new `./agent-kit/*` subpaths (`workspace`, `api`, `db`,
+  `codex-parity`, `codex-parity/repo-checks`, `guide-pair`) plus two published CLI bins
+  (`agent-kit-codex-agents`, `agent-kit-codex-spawn-schema`). This is the session-workspace resolver, the
+  Bearer-token API client, the read-only DB helper, the Claude↔Codex subagent-parity generator/checker, and
+  the `CLAUDE.md`/`AGENTS.md` guide-pair linter that the Plant Doctor and the Knowledge Engine each used to
+  carry as their own copy — now one implementation, imported rather than forked. Its DB and Codex-tooling
+  dependencies (`mysql2`, `execa`, `yaml`, `smol-toml`) are declared as **optional peer dependencies**: a
+  plain `npm install` of this package (as `my-plants-api` and `my-plants-web` do) pulls in none of them; an
+  agent repo that already depends on them directly is unaffected.
