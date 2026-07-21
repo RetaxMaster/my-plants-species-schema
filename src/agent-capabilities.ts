@@ -40,6 +40,13 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     // note, the gardener never does.
     'clinical_record.create': { allowed: true },
     'clinical_record.update': { allowed: true },
+    // The five garden operations are the gardener's exclusively (spec §5.2/§5.3): the doctor is scoped
+    // to one plant and never touches places, cities, or the creation of a new plant.
+    'place.create': { allowed: false },
+    'place.update': { allowed: false },
+    'city.create': { allowed: false },
+    'city.update': { allowed: false },
+    'plant.create': { allowed: false },
   },
   gardener: {
     'profile.update': { allowed: true },
@@ -54,6 +61,13 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     // operations even though it may not exercise either of them.
     'clinical_record.create': { allowed: false },
     'clinical_record.update': { allowed: false },
+    // The five garden operations, granted (spec §5.2/§5.3): the gardener manages places, cities, and
+    // adds new plants to the garden.
+    'place.create': { allowed: true },
+    'place.update': { allowed: true },
+    'city.create': { allowed: true },
+    'city.update': { allowed: true },
+    'plant.create': { allowed: true },
   },
 };
 

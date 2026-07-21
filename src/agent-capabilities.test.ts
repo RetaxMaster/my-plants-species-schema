@@ -87,6 +87,27 @@ describe('assertOmitFieldsAreRealFields', () => {
   });
 });
 
+describe('gardener capability rows (Spec 4 §5.2/§5.3)', () => {
+  const GARDEN_OPS = ['place.create', 'place.update', 'city.create', 'city.update', 'plant.create'] as const;
+  it('permits every garden operation to the gardener', () => {
+    for (const t of GARDEN_OPS) expect(mayPropose('gardener', t)).toBe(true);
+  });
+  it('withholds every garden operation from the doctor', () => {
+    for (const t of GARDEN_OPS) expect(mayPropose('doctor', t)).toBe(false);
+  });
+  it('withholds progress.delete from the gardener but keeps it for the doctor', () => {
+    expect(mayPropose('gardener', 'progress.delete')).toBe(false);
+    expect(mayPropose('doctor', 'progress.delete')).toBe(true);
+  });
+  it('grants plant.update.placeId to the gardener EXCLUSIVELY', () => {
+    // ⚠️ The exported helper reports OMITTED fields, so the polarity is INVERTED relative to a
+    // "may propose this field?" predicate. Assert the omission set directly — a mechanical rename of a
+    // `mayProposeField(...)` call would leave two assertions that are both backwards and both green.
+    expect(omittedFieldsFor('gardener', 'plant.update')).toEqual([]);          // relocation granted
+    expect(omittedFieldsFor('doctor',  'plant.update')).toEqual(['placeId']);  // relocation withheld
+  });
+});
+
 describe('permittedTypesFor', () => {
   // §4.3 names this the denominator for doc + i18n parity, so both the exclusion and the declaration
   // order it returns in are load-bearing, not incidental.
@@ -99,6 +120,7 @@ describe('permittedTypesFor', () => {
     expect(permittedTypesFor('gardener')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'frequency.set', 'frequency.clear', 'care.done',
+      'place.create', 'place.update', 'city.create', 'city.update', 'plant.create',
     ]);
   });
 });
