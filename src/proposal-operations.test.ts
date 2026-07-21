@@ -175,11 +175,11 @@ describe('single-operation serialization bound', () => {
     },
     'city.create': {
       type: 'city.create', name: 'n'.repeat(120), latitude: 20.67, longitude: -103.35,
-      timezone: 'America/Mexico_City',
+      timezone: 't'.repeat(64),
     },
     'city.update': {
       type: 'city.update', cityId: 'c'.repeat(64), name: 'n'.repeat(120), latitude: 20.67,
-      longitude: -103.35, timezone: 'America/Mexico_City',
+      longitude: -103.35, timezone: 't'.repeat(64),
     },
     'plant.create': {
       type: 'plant.create', speciesSlug: 'nephrolepis-biserrata', placeId: 'p'.repeat(64),
