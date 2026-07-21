@@ -229,6 +229,12 @@ function writeSet(op: ProposalOperation): string[] {
     // Do not "fix" this back to [].
     case 'clinical_record.create':
     case 'clinical_record.update': return ['clinical:record'];
+    case 'place.update': return Object.keys(op).filter((k) => k !== 'type' && k !== 'placeId').map((k) => `place:${op.placeId}:${k}`);
+    case 'city.update': return Object.keys(op).filter((k) => k !== 'type' && k !== 'cityId').map((k) => `city:${op.cityId}:${k}`);
+    // Creates have no pre-existing target, so two creates never collide (same rule as progress.create).
+    case 'place.create':
+    case 'city.create':
+    case 'plant.create': return [];
   }
 }
 

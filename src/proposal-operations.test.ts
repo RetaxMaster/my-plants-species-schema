@@ -298,3 +298,24 @@ describe('plant.create', () => {
     expect(operationSchema.safeParse({ ...p, lastDone: [] }).success).toBe(false);
   });
 });
+
+describe('garden write-set overlap', () => {
+  it('rejects two ops touching the same place field', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'place.update', placeId: 'P1', airflow: 'still' },
+      { type: 'place.update', placeId: 'P1', airflow: 'breezy' },
+    ] as never)).toBe('place:P1:airflow');
+  });
+  it('allows two ops touching DIFFERENT places', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'place.update', placeId: 'P1', airflow: 'still' },
+      { type: 'place.update', placeId: 'P2', airflow: 'breezy' },
+    ] as never)).toBeNull();
+  });
+  it('never collides two creates — a create has no pre-existing target', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'city.create', name: 'A', latitude: 0, longitude: 0, timezone: 'UTC' },
+      { type: 'city.create', name: 'B', latitude: 1, longitude: 1, timezone: 'UTC' },
+    ] as never)).toBeNull();
+  });
+});
