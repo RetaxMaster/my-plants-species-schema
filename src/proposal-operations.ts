@@ -71,14 +71,23 @@ const clinicalRecordUpdate = z.object({
   body: clinicalBody,
 }).strict();
 
-const IDENTITY_KEYS = new Set(['type', 'entryId', 'task']);
-const REQUIRES_A_FIELD = new Set(['profile.update', 'plant.update', 'progress.update']);
+// Identity keys are PER TYPE, not global. `placeId` identifies the target of `place.update` but is a WRITE
+// field on `plant.update` (relocation) — a single global set would reject a relocation-only plant.update as
+// "no field to change". Any type absent from this map has no identity key beyond `type`.
+const IDENTITY_KEYS_BY_TYPE: Record<string, ReadonlySet<string>> = {
+  'progress.update': new Set(['type', 'entryId']),
+  'place.update': new Set(['type', 'placeId']),
+  'city.update': new Set(['type', 'cityId']),
+};
+const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
+const REQUIRES_A_FIELD = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
   .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
-    const writes = Object.keys(op).filter((k) => !IDENTITY_KEYS.has(k));
+    const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
+    const writes = Object.keys(op).filter((k) => !identity.has(k));
     if (writes.length === 0) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${op.type} requires at least one field to change` });
     }

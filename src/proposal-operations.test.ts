@@ -29,6 +29,9 @@ describe('operationSchema', () => {
   it('rejects an ISO instant for a date field', () => {
     expect(operationSchema.safeParse({ type: 'care.done', task: 'WATER', occurredOn: '2026-07-16T00:00:00Z' }).success).toBe(false);
   });
+  it('accepts a relocation-only plant.update (placeId is a WRITE field, not identity)', () => {
+    expect(operationSchema.safeParse({ type: 'plant.update', placeId: 'PLACE_1' }).success).toBe(true);
+  });
 });
 
 describe('findOverlappingWriteSet', () => {
