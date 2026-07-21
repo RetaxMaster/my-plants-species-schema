@@ -10,3 +10,13 @@
 // the watering engine's airflowFactor (spec A §3.1). `null` (unset) is treated as neutral by the engine.
 export const AIRFLOW = ['still', 'some', 'breezy'] as const;
 export type Airflow = (typeof AIRFLOW)[number];
+
+// The place's light level, ordered brightest → dimmest. Mirrors the Prisma enum `LightType`; an API parity
+// test pins the two together so the vocabulary cannot drift from the column it validates.
+export const LIGHT_TYPES = ['DIRECT', 'BRIGHT_INDIRECT', 'MEDIUM', 'LOW'] as const;
+export type LightTypeSlug = (typeof LIGHT_TYPES)[number];
+
+// How humid the air at this spot habitually is. Mirrors the Prisma enum `HumidityCharacter`. `null` (unset)
+// is treated as neutral by the care engine, which is why the column is nullable and this array is not.
+export const HUMIDITY_CHARACTERS = ['DRY', 'NORMAL', 'HUMID'] as const;
+export type HumidityCharacterSlug = (typeof HUMIDITY_CHARACTERS)[number];
