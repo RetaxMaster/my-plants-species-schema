@@ -319,3 +319,17 @@ describe('garden write-set overlap', () => {
     ] as never)).toBeNull();
   });
 });
+
+// TWO MECHANISMS OF UNEQUAL STRENGTH (Spec 4 §5.3). This asserts the STRONGER one: absence.
+// `progress.delete` is withheld from the gardener by the capability map — a table entry, tested elsewhere.
+// These three are withheld from EVERYONE because they do not exist to be granted.
+describe('operations that exist for nobody', () => {
+  for (const type of ['plant.delete', 'place.delete', 'city.delete']) {
+    it(`has no ${type} member in the union`, () => {
+      const r = operationSchema.safeParse({ type, id: 'X' });
+      expect(r.success).toBe(false);
+      // It fails at the DISCRIMINATOR, before any capability map is consulted.
+      expect(JSON.stringify(r)).toContain('invalid_union_discriminator');
+    });
+  }
+});
