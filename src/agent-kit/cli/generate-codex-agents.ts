@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -160,9 +161,27 @@ function main(argv: string[]): number {
   return 0;
 }
 
-const invokedDirectly =
-  process.argv[1] !== undefined &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+/**
+ * Resolves a path's realpath, or undefined if it can't be resolved (missing, dangling symlink, etc).
+ * Used instead of a bare equality check because npm installs a `bin` as a SYMLINK in
+ * `node_modules/.bin/`: Node leaves `process.argv[1]` as that symlink path while `import.meta.url`
+ * resolves to the target's real location, so a raw `path.resolve(argv[1]) === fileURLToPath(url)`
+ * comparison can never match through an installed bin — `invokedDirectly` would be permanently false,
+ * `main()` would never run, and the CLI would silently exit 0 having done nothing (a real incident: see
+ * generate-codex-agents.test.ts's "invoked via a node_modules/.bin-style symlink" case).
+ */
+function tryRealpath(target: string): string | undefined {
+  try {
+    return realpathSync(target);
+  } catch {
+    return undefined;
+  }
+}
+
+const invokedPath = process.argv[1] !== undefined ? tryRealpath(path.resolve(process.argv[1])) : undefined;
+const modulePath = tryRealpath(fileURLToPath(import.meta.url));
+
+const invokedDirectly = invokedPath !== undefined && modulePath !== undefined && invokedPath === modulePath;
 
 if (invokedDirectly) {
   process.exit(main(process.argv.slice(2)));
