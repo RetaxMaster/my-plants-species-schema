@@ -20,6 +20,13 @@ import { syncCodexAgents } from "../cli/generate-codex-agents";
  * forked into a second file. `label` is accepted for symmetry with the per-repo caller (which uses it
  * to title its own `describe()`); neither assertion body below hardcodes the repo's identity in a
  * message, so there is nothing to interpolate.
+ *
+ * ⚠️ CONSEQUENCE FOR EVERY CALLER, and it is load-bearing: because `label` is not interpolated into
+ * any assertion message, a failure raised here says WHAT broke but not WHICH repo it broke in. With
+ * three agent repos calling the same two functions, that attribution comes entirely from the caller's
+ * test shape — so each repo's one-line `*.test.ts` MUST wrap the call in a `describe(label, …)` whose
+ * title carries the repo's identity. Drop that and a red run in CI names a role and a file path with
+ * no way to tell whose tree is out of sync.
  */
 
 /**
