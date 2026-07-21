@@ -1,4 +1,9 @@
-import { PROPOSAL_OPERATION_TYPES, type ProposalOperationType } from './proposal-operations.js';
+import {
+  operationSchema,
+  PROPOSAL_OPERATION_TYPES,
+  discriminatedUnionMembers,
+  type ProposalOperationType,
+} from './proposal-operations.js';
 
 /** The agent roles that can hold a scoped token. Mirrors the JWT's `scope` claim. */
 export const AGENT_SCOPES = ['doctor', 'gardener'] as const;
@@ -68,4 +73,51 @@ export function forbiddenFieldsIn(scope: AgentScope, op: { type: ProposalOperati
 /** The operation types a scope may propose, in union order — the denominator for doc + i18n parity. */
 export function permittedTypesFor(scope: AgentScope): ProposalOperationType[] {
   return PROPOSAL_OPERATION_TYPES.filter((t) => mayPropose(scope, t));
+}
+
+/**
+ * Each operation's real field keys, via the SAME guarded accessor `discriminatedUnionMembers` uses
+ * elsewhere (proposal-operations.ts) — never a second reflection walk of `operationSchema`'s internals.
+ */
+function operationShapeKeys(): ReadonlyMap<ProposalOperationType, ReadonlySet<string>> {
+  const entries = discriminatedUnionMembers(operationSchema).map((m) => {
+    const shape = (m as unknown as { shape: Record<string, { _def: { value: string } }> }).shape;
+    const type = shape.type._def.value as ProposalOperationType;
+    return [type, new Set(Object.keys(shape))] as const;
+  });
+  return new Map(entries);
+}
+
+/**
+ * The invariant every tool-doc generator across the agent repos leans on: an `omitFields` entry in
+ * `AGENT_CAPABILITIES` must actually name a field that exists on that operation's schema. A typo
+ * (`placeID` for `placeId`) would otherwise omit NOTHING — the field it meant to withhold stays fully
+ * documented, with no error anywhere, which is exactly the doc↔API divergence the capability map exists
+ * to prevent, arriving through a typo instead of a missing filter.
+ *
+ * This lives here — beside `AGENT_CAPABILITIES` and `operationSchema`, which both live in this package —
+ * rather than in each consumer, so the whole map is validated ONCE, in the repo that owns it, instead of
+ * every agent repo re-deriving the same "walk the union, map type → field keys" reflection. Called by this
+ * package's own test suite (so every `./scripts/test-all.sh` run validates the map) AND by each agent
+ * repo's tool-doc generator at generation time (so a typo fails that repo's build loudly, not quietly).
+ */
+export function assertOmitFieldsAreRealFields(): void {
+  const shapeKeys = operationShapeKeys();
+  const problems: string[] = [];
+  for (const scope of AGENT_SCOPES) {
+    for (const type of PROPOSAL_OPERATION_TYPES) {
+      const keys = shapeKeys.get(type) ?? new Set<string>();
+      for (const field of omittedFieldsFor(scope, type)) {
+        if (!keys.has(field)) {
+          problems.push(`${scope}.${type}.omitFields lists "${field}", which is not a field on ${type}`);
+        }
+      }
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      `agent-capabilities: AGENT_CAPABILITIES (in @retaxmaster/my-plants-species-schema/agent-capabilities) ` +
+        `has omitFields referencing unknown field(s) — check the map for a typo:\n${problems.join('\n')}`,
+    );
+  }
 }

@@ -7,6 +7,7 @@ import {
   omittedFieldsFor,
   forbiddenFieldsIn,
   permittedTypesFor,
+  assertOmitFieldsAreRealFields,
 } from './agent-capabilities.js';
 
 describe('the capability map', () => {
@@ -65,6 +66,15 @@ describe('an unknown scope denies explicitly instead of crashing', () => {
 
   it('forbiddenFieldsIn returns an empty list', () => {
     expect(forbiddenFieldsIn(unknownScope, { type: 'plant.update', placeId: 'p1' } as never)).toEqual([]);
+  });
+});
+
+describe('assertOmitFieldsAreRealFields', () => {
+  // The trap this closes: nothing else validates that an `omitFields` entry actually names a field that
+  // exists on that operation's schema. A typo (`placeID` for `placeId`) would omit NOTHING, and the field
+  // it meant to withhold would still be fully documented downstream, with no error anywhere.
+  it('does not throw against the real map (every omitFields entry is a real field, for every scope)', () => {
+    expect(() => assertOmitFieldsAreRealFields()).not.toThrow();
   });
 });
 
