@@ -73,14 +73,15 @@ const clinicalRecordUpdate = z.object({
 
 // Identity keys are PER TYPE, not global. `placeId` identifies the target of `place.update` but is a WRITE
 // field on `plant.update` (relocation) — a single global set would reject a relocation-only plant.update as
-// "no field to change". Any type absent from this map has no identity key beyond `type`.
-const IDENTITY_KEYS_BY_TYPE: Record<string, ReadonlySet<string>> = {
+// "no field to change". Any type absent from this map falls to DEFAULT_IDENTITY_KEYS below. An entry is
+// added here in the SAME change as its operation's z.object — never ahead of it — so the key is checked
+// against the real ProposalOperationType union: a typo (or a member that hasn't landed yet) is a compile
+// error, not a silently-ignored map miss.
+const IDENTITY_KEYS_BY_TYPE: Partial<Record<ProposalOperationType, ReadonlySet<string>>> = {
   'progress.update': new Set(['type', 'entryId']),
-  'place.update': new Set(['type', 'placeId']),
-  'city.update': new Set(['type', 'cityId']),
 };
 const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
-const REQUIRES_A_FIELD = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
+const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update']);
 
 export const operationSchema = z
   .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate])

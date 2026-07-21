@@ -32,6 +32,9 @@ describe('operationSchema', () => {
   it('accepts a relocation-only plant.update (placeId is a WRITE field, not identity)', () => {
     expect(operationSchema.safeParse({ type: 'plant.update', placeId: 'PLACE_1' }).success).toBe(true);
   });
+  it('rejects an identity-only progress.update (entryId is IDENTITY here, not a write field)', () => {
+    expect(operationSchema.safeParse({ type: 'progress.update', entryId: 'e1' }).success).toBe(false);
+  });
 });
 
 describe('findOverlappingWriteSet', () => {

@@ -11,12 +11,22 @@
 export const AIRFLOW = ['still', 'some', 'breezy'] as const;
 export type Airflow = (typeof AIRFLOW)[number];
 
-// The place's light level, ordered brightest → dimmest. Mirrors the Prisma enum `LightType`; an API parity
-// test pins the two together so the vocabulary cannot drift from the column it validates.
+// The place's light level, ordered brightest → dimmest. Mirrors the API's Prisma enum `LightType`
+// (repos/my-plants-api/prisma/schema.prisma) exactly, by inspection — but nothing pins the two together
+// YET: my-plants-api consumes this package as a packed tarball, and the tarball is not repacked until
+// Task 2.11 lands. A parity test in my-plants-api asserting this array against `LightType` is an OPEN
+// OBLIGATION of this feature, not yet discharged; do not read this comment as "already checked".
 export const LIGHT_TYPES = ['DIRECT', 'BRIGHT_INDIRECT', 'MEDIUM', 'LOW'] as const;
+// Suffixed `Slug`, unlike the sibling `Airflow` type above: a bare `LightType` would collide with Prisma's
+// own enum name and with the hand-rolled `LightType` in repos/my-plants-web/types/api.ts.
 export type LightTypeSlug = (typeof LIGHT_TYPES)[number];
 
-// How humid the air at this spot habitually is. Mirrors the Prisma enum `HumidityCharacter`. `null` (unset)
-// is treated as neutral by the care engine, which is why the column is nullable and this array is not.
+// How humid the air at this spot habitually is. Mirrors the API's Prisma enum `HumidityCharacter`
+// (repos/my-plants-api/prisma/schema.prisma) exactly, by inspection — same open obligation as
+// `LIGHT_TYPES` above: no parity test exists yet, pending the packed tarball reaching my-plants-api
+// (Task 2.11). `null` (unset) is treated as neutral by the care engine, which is why the column is
+// nullable and this array is not.
 export const HUMIDITY_CHARACTERS = ['DRY', 'NORMAL', 'HUMID'] as const;
+// Suffixed `Slug` for the same reason as `LightTypeSlug`: avoids colliding with Prisma's `HumidityCharacter`
+// enum and with the hand-rolled `HumidityCharacter` in repos/my-plants-web/types/api.ts.
 export type HumidityCharacterSlug = (typeof HUMIDITY_CHARACTERS)[number];
