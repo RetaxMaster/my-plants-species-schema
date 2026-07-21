@@ -67,6 +67,30 @@ describe('findOverlappingWriteSet', () => {
       { type: 'progress.create', health: 'EXCELLENT' },
     ] as ProposalOperation[])).toBeNull();
   });
+  it('returns the overlap key for two clinical_record.create ops (neither carrying a date)', () => {
+    expect(
+      findOverlappingWriteSet([
+        { type: 'clinical_record.create', body: 'a' },
+        { type: 'clinical_record.create', body: 'b' },
+      ]),
+    ).toBe('clinical:record');
+  });
+  it('returns the overlap key for a clinical create + update in one proposal', () => {
+    expect(
+      findOverlappingWriteSet([
+        { type: 'clinical_record.create', body: 'a' },
+        { type: 'clinical_record.update', body: 'b' },
+      ]),
+    ).toBe('clinical:record');
+  });
+  it('does not collide a clinical op with an unrelated op', () => {
+    expect(
+      findOverlappingWriteSet([
+        { type: 'clinical_record.create', body: 'a' },
+        { type: 'frequency.set', task: 'WATER', intervalDays: 7 },
+      ]),
+    ).toBeNull();
+  });
 });
 
 describe('serializedBytes', () => {

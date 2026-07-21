@@ -140,6 +140,21 @@ function writeSet(op: ProposalOperation): string[] {
     case 'frequency.set':
     case 'frequency.clear': return [`frequency:${op.task}`];
     case 'care.done': return [`care:${op.task}:${op.occurredOn}`];
+    // A CONSTANT key, deliberately date-free, for BOTH operations.
+    //
+    // `clinical:<recordedOn>` is not computable here: this function is PURE — no database, no owner, no
+    // timezone — `clinical_record.update` carries no date at all, and `recordedOn` on a create is optional,
+    // so the keyed form would degrade to `clinical:undefined` in exactly the common case the rule must
+    // catch. A constant key refuses ANY two clinical operations in one proposal, which is correct anyway:
+    // the @@unique([plantId, recordedOn]) constraint means there is at most one record per plant per day,
+    // so two clinical operations in one proposal are always either redundant or contradictory.
+    //
+    // ⚠️ DELIBERATE DEVIATION from `progress.create` above, which returns [] because "a create has no
+    // pre-existing target, so two creates never collide". That reasoning does NOT transfer: two clinical
+    // creates DO collide, on the unique constraint, because the target is the DAY rather than a new row.
+    // Do not "fix" this back to [].
+    case 'clinical_record.create':
+    case 'clinical_record.update': return ['clinical:record'];
   }
 }
 
