@@ -78,7 +78,23 @@ describe('checkGuidePair', () => {
     const result = checkGuidePair({ repoRoot: dir, selfReferencePattern });
 
     expect(result.selfReferenceLinesSeen).toBe(0);
-    expect(result.problems).toHaveLength(1);
-    expect(result.problems[0]).toContain('line 2 differs');
+    expect(result.problems).toHaveLength(2);
+    expect(result.problems.some((p) => p.includes('line 2 differs'))).toBe(true);
+    expect(result.problems.some((p) => /expected exactly one/.test(p))).toBe(true);
+  });
+
+  it('does NOT pass vacuously on a straight byte-for-byte copy where the self-reference was never adapted', () => {
+    // The most common real slip: AGENTS.md is a literal `cp` of CLAUDE.md, so EVERY line — including the
+    // self-reference sentence, which still says "This file is CLAUDE.md" in the AGENTS.md copy — trivially
+    // satisfies the plain-equality fallback. Before this guard, that meant selfReferenceLinesSeen stayed 0
+    // and problems stayed [] — a fully green result for a pair that was never actually adapted for AGENTS.
+    const body = 'This file is CLAUDE.md; its peer is AGENTS.md.\nSame rule body.\n';
+    writeGuidePair(dir, body, body);
+
+    const result = checkGuidePair({ repoRoot: dir, selfReferencePattern });
+
+    expect(result.selfReferenceLinesSeen).toBe(0);
+    expect(result.problems.length).toBeGreaterThan(0);
+    expect(result.problems.some((p) => /expected exactly one/.test(p))).toBe(true);
   });
 });

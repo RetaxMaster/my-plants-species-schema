@@ -3,8 +3,8 @@ import path from "node:path";
 
 import { expect } from "vitest";
 
-import { checkTypedDelegationContract } from "./codex-delegation";
-import { syncCodexAgents } from "../cli/generate-codex-agents";
+import { checkTypedDelegationContract } from "./codex-delegation.js";
+import { syncCodexAgents } from "../cli/generate-codex-agents.js";
 
 /**
  * ⚠️ TEST-ONLY MODULE — imports `vitest`. `vitest` is only ever installed as a devDependency, and

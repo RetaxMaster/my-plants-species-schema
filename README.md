@@ -87,9 +87,14 @@ Two bins ship alongside: `agent-kit-codex-agents` and `agent-kit-codex-spawn-sch
 be run from the consuming agent repo's own root (via its own `npm run` scripts), never from
 inside this package.
 
-`mysql2`, `execa`, `yaml` and `smol-toml` are declared as **optional peer dependencies** — npm
-does **not** install them for a consumer that never imports the subpath that needs them, which
-is what lets a consumer that only needs `agent-kit/workspace` stay free of `mysql2`.
+`mysql2`, `execa`, `yaml` and `smol-toml` are declared as **optional peer dependencies** — being
+*optional* is what tells npm never to auto-install them at all, for any consumer, regardless of
+what that consumer imports (a *required* peer, by contrast, npm ≥7 installs for every consumer
+whether they need it or not). What actually keeps a consumer that only needs `agent-kit/workspace`
+free of a `mysql2` **import error** is a separate mechanism: Node's ESM resolution is per-file and
+lazy, so a subpath a consumer never imports (`agent-kit/db`) never triggers its dependency's
+resolution in the first place. A consumer that DOES import `agent-kit/db` must install `mysql2`
+itself.
 
 `checkGuidePair` asserts **whole-file byte equality** between `CLAUDE.md` and `AGENTS.md`,
 exempting only the H1 and one correctly-paired self-reference line. That is stronger than the

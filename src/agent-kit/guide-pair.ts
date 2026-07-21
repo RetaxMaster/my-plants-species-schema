@@ -42,5 +42,17 @@ export function checkGuidePair(options: GuidePairOptions): GuidePairResult {
     if (options.isExemptLine?.(n, c, a)) continue;
     if (c !== a) problems.push(`line ${n} differs:\n  CLAUDE.md: ${c}\n  AGENTS.md: ${a}`);
   }
+  // A pair that is a straight byte-for-byte copy (the most common real slip — CLAUDE.md copy-pasted to
+  // AGENTS.md with the self-reference sentence never adapted) would otherwise sail through: every line,
+  // INCLUDING the un-adapted self-reference, trivially satisfies the plain-equality fallback above, so
+  // selfReferenceLinesSeen stays 0 and problems stays empty. The helper must enforce this itself — a
+  // caller-side sanity assertion is exactly what got left behind when this was extracted from the
+  // reference implementation.
+  if (selfReferenceLinesSeen !== 1) {
+    problems.push(
+      `expected exactly one correctly-paired self-reference line, saw ${selfReferenceLinesSeen} — ` +
+        'a count of 0 usually means the pair was copied without adapting its self-reference sentence',
+    );
+  }
   return { problems, selfReferenceLinesSeen };
 }
