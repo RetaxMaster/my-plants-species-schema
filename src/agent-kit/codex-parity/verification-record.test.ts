@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -42,6 +42,13 @@ describe("codex roles verification record", () => {
     expect(readCodexRolesVerified(dir)).toBe(true);
     writeCodexRolesVerified(dir, false);
     expect(readCodexRolesVerified(dir)).toBe(false); // no stale cache
+  });
+
+  it("writes the exact path and shape the API reads (runtime contract, not an internal detail)", () => {
+    writeCodexRolesVerified(dir, true);
+    const file = path.join(dir, "codex-roles-verified.json");
+    expect(existsSync(file)).toBe(true);
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ codexRolesVerified: true });
   });
 
   it("keys by state dir — a record in one engine's state dir does not authorize another engine's", () => {
