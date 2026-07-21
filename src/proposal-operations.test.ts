@@ -135,6 +135,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
       'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
+      'city.create', 'city.update',
     ]);
   });
 });
@@ -171,6 +172,14 @@ describe('single-operation serialization bound', () => {
       type: 'place.update', placeId: 'p'.repeat(64), name: 'n'.repeat(120), climateControlled: true,
       lightType: 'BRIGHT_INDIRECT', humidityCharacter: 'HUMID', airflow: 'breezy',
       indoorTempMinC: 18, indoorTempMaxC: 30,
+    },
+    'city.create': {
+      type: 'city.create', name: 'n'.repeat(120), latitude: 20.67, longitude: -103.35,
+      timezone: 'America/Mexico_City',
+    },
+    'city.update': {
+      type: 'city.update', cityId: 'c'.repeat(64), name: 'n'.repeat(120), latitude: 20.67,
+      longitude: -103.35, timezone: 'America/Mexico_City',
     },
   };
 
@@ -249,5 +258,23 @@ describe('place.update', () => {
   it('does NOT accept indoor or cityId — the owner cannot change them either', () => {
     expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1', indoor: false }).success).toBe(false);
     expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1', cityId: 'C2' }).success).toBe(false);
+  });
+});
+
+describe('city operations', () => {
+  const city = { type: 'city.create', name: 'Guadalajara', latitude: 20.67, longitude: -103.35, timezone: 'America/Mexico_City' };
+  it('accepts a full city.create', () => {
+    expect(operationSchema.safeParse(city).success).toBe(true);
+  });
+  it('bounds the coordinates', () => {
+    expect(operationSchema.safeParse({ ...city, latitude: 91 }).success).toBe(false);
+    expect(operationSchema.safeParse({ ...city, longitude: -181 }).success).toBe(false);
+  });
+  it('has NO isPrimary — primary-city selection is the owner’s, never an agent operation', () => {
+    expect(operationSchema.safeParse({ ...city, isPrimary: true }).success).toBe(false);
+  });
+  it('accepts a partial city.update and rejects a target-only one', () => {
+    expect(operationSchema.safeParse({ type: 'city.update', cityId: 'C1', timezone: 'UTC' }).success).toBe(true);
+    expect(operationSchema.safeParse({ type: 'city.update', cityId: 'C1' }).success).toBe(false);
   });
 });

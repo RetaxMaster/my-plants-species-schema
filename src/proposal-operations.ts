@@ -70,6 +70,26 @@ const placeUpdate = z.object({
   indoorTempMaxC: z.number().nullable().optional(),
 }).strict();
 
+const latitude = z.number().min(-90).max(90);
+const longitude = z.number().min(-180).max(180);
+
+// Mirrors CreateCityDto minus `isPrimary`: primary-city selection stays the owner's (Spec 4 §5.2).
+const cityCreate = z.object({
+  type: z.literal('city.create'),
+  name: z.string().min(1).max(120),
+  latitude, longitude,
+  timezone: z.string().min(1).max(64),
+}).strict();
+
+const cityUpdate = z.object({
+  type: z.literal('city.update'),
+  cityId: z.string().min(1),
+  name: z.string().min(1).max(120).optional(),
+  latitude: latitude.optional(),
+  longitude: longitude.optional(),
+  timezone: z.string().min(1).max(64).optional(),
+}).strict();
+
 /**
  * A clinical record body is Markdown and is by far the largest single operation this union carries.
  * The cap is per-field and deliberately smaller than the envelope: ONE max-size record serializes to
@@ -112,12 +132,13 @@ const clinicalRecordUpdate = z.object({
 const IDENTITY_KEYS_BY_TYPE: Partial<Record<ProposalOperationType, ReadonlySet<string>>> = {
   'progress.update': new Set(['type', 'entryId']),
   'place.update': new Set(['type', 'placeId']),
+  'city.update': new Set(['type', 'cityId']),
 };
 const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
-const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update']);
+const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
