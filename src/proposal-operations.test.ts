@@ -5,6 +5,7 @@ import {
   findOverlappingWriteSet,
   serializedBytes,
   MAX_OPERATIONS,
+  PROPOSAL_OPERATION_TYPES,
   type ProposalOperation,
 } from './proposal-operations.js';
 
@@ -88,5 +89,17 @@ describe('createProposalSchema', () => {
       occurredOn: '2026-07-16',
     }));
     expect(createProposalSchema.safeParse({ summary: 'Too many', operations }).success).toBe(false);
+  });
+});
+
+describe('PROPOSAL_OPERATION_TYPES', () => {
+  it('lists every discriminant in the union, in declaration order', () => {
+    // ⚠️ THIS LIST IS A TRIPWIRE, AND IT IS MEANT TO BE GROWN. Specs 2 and 4 each append their new
+// discriminants here, in declaration order. Whoever meets it red: ADD the member. Never relax it to
+// `toContain` — the exact-equality is what makes a forgotten consumer fail loudly instead of shipping.
+expect(PROPOSAL_OPERATION_TYPES).toEqual([
+      'profile.update', 'plant.update', 'progress.create', 'progress.update',
+      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
+    ]);
   });
 });

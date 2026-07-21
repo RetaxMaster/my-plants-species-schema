@@ -52,6 +52,18 @@ export const operationSchema = z
   });
 export type ProposalOperation = z.infer<typeof operationSchema>;
 
+export type ProposalOperationType = ProposalOperation['type'];
+
+/**
+ * The union's discriminants, at RUNTIME. `operationSchema` is a ZodEffects wrapping the
+ * discriminatedUnion (the superRefine above), so the members live at `_def.schema.options`.
+ * Derived — never hand-listed — so a new member cannot be forgotten by a consumer that indexes by type.
+ */
+export const PROPOSAL_OPERATION_TYPES: readonly ProposalOperationType[] = (
+  (operationSchema as unknown as { _def: { schema: { options: { shape: { type: { _def: { value: ProposalOperationType } } } } }[] } })
+    ._def.schema.options
+).map((m) => m.shape.type._def.value);
+
 export const MAX_OPERATIONS = 10;
 export const MAX_SUMMARY_CHARS = 500;
 export const MAX_SERIALIZED_BYTES = 64 * 1024;
