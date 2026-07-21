@@ -44,12 +44,20 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
   },
 };
 
+// `scope` is typed as `AgentScope`, but every caller here is one hop from a JWT claim or a request-time
+// value — never assume the compile-time type is the runtime reality. A scope with no row in the map
+// (a value outside AGENT_SCOPES, or a future scope the map has not been extended for yet) DENIES
+// explicitly rather than indexing into `undefined` and throwing a raw TypeError. That distinction
+// matters: a thrown TypeError bypasses classifyFailure's VALIDATION mapping and surfaces as a generic
+// 500, and — the sharper point — a security property that only holds because SOME OTHER caller happens
+// to reject the value first (as `ProposalsController.requireDoctorToken()` does for `'doctor'` today) is
+// one refactor away from silently disappearing. Fail closed here, unconditionally.
 export function mayPropose(scope: AgentScope, type: ProposalOperationType): boolean {
-  return AGENT_CAPABILITIES[scope][type]?.allowed === true;
+  return AGENT_CAPABILITIES[scope]?.[type]?.allowed === true;
 }
 
 export function omittedFieldsFor(scope: AgentScope, type: ProposalOperationType): readonly string[] {
-  return AGENT_CAPABILITIES[scope][type]?.omitFields ?? [];
+  return AGENT_CAPABILITIES[scope]?.[type]?.omitFields ?? [];
 }
 
 /** The withheld field keys actually present on this operation object. Empty = nothing to refuse. */

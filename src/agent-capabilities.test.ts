@@ -47,6 +47,27 @@ describe('the asymmetric and field-level rules', () => {
   });
 });
 
+describe('an unknown scope denies explicitly instead of crashing', () => {
+  // A scope outside AGENT_SCOPES has no row in the map. Indexing straight into it would throw a raw
+  // TypeError (a 500 that bypasses classifyFailure's VALIDATION mapping) — and the current callers only
+  // avoid hitting this because THEY reject an unrecognized scope first, which is exactly the kind of
+  // property that quietly breaks the next time a caller changes. These three assert the map itself fails
+  // closed, independent of any caller.
+  const unknownScope = 'nonsense' as unknown as (typeof AGENT_SCOPES)[number];
+
+  it('mayPropose denies', () => {
+    expect(mayPropose(unknownScope, 'plant.update')).toBe(false);
+  });
+
+  it('omittedFieldsFor returns an empty list', () => {
+    expect(omittedFieldsFor(unknownScope, 'plant.update')).toEqual([]);
+  });
+
+  it('forbiddenFieldsIn returns an empty list', () => {
+    expect(forbiddenFieldsIn(unknownScope, { type: 'plant.update', placeId: 'p1' } as never)).toEqual([]);
+  });
+});
+
 describe('permittedTypesFor', () => {
   // §4.3 names this the denominator for doc + i18n parity, so both the exclusion and the declaration
   // order it returns in are load-bearing, not incidental.
