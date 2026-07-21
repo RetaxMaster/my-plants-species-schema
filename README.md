@@ -62,3 +62,36 @@ import { /* schema, types, validators */ } from "@retaxmaster/my-plants-species-
 ```
 
 See `src/` for the exact exports.
+
+### agent-kit
+
+`agent-kit` is the shared scaffolding every agent repo (the Plant Doctor, the Knowledge Engine,
+and any future agent) builds its `scripts/` on, hosted here as narrow subpaths so each consumer
+only pulls in what it actually imports:
+
+- `@retaxmaster/my-plants-species-schema/agent-kit/workspace` — session-workspace resolution.
+- `@retaxmaster/my-plants-species-schema/agent-kit/api` — the bearer-token API client.
+- `@retaxmaster/my-plants-species-schema/agent-kit/db` — the read connection to the API-owned
+  MariaDB.
+- `@retaxmaster/my-plants-species-schema/agent-kit/codex-parity` — the Codex-parity barrel
+  (`codex-agent`, `codex-delegation`, `verification-record`).
+- `@retaxmaster/my-plants-species-schema/agent-kit/codex-parity/repo-checks` — the two
+  parameterized repo-level Codex-parity assertions, exported on their **own** subpath rather
+  than folded into the barrel above: `repo-checks.ts` imports `vitest`, and the barrel also
+  carries `verification-record`, which non-test runtime code genuinely imports — bundling both
+  together would crash any non-test consumer of the barrel at import time.
+- `@retaxmaster/my-plants-species-schema/agent-kit/guide-pair` — the `checkGuidePair` helper
+  (see below).
+
+Two bins ship alongside: `agent-kit-codex-agents` and `agent-kit-codex-spawn-schema`, meant to
+be run from the consuming agent repo's own root (via its own `npm run` scripts), never from
+inside this package.
+
+`mysql2`, `execa`, `yaml` and `smol-toml` are declared as **optional peer dependencies** — npm
+does **not** install them for a consumer that never imports the subpath that needs them, which
+is what lets a consumer that only needs `agent-kit/workspace` stay free of `mysql2`.
+
+`checkGuidePair` asserts **whole-file byte equality** between `CLAUDE.md` and `AGENTS.md`,
+exempting only the H1 and one correctly-paired self-reference line. That is stronger than the
+workspace's intent-parity rule, deliberately: both existing agent repos satisfy it by stating
+**both** runtimes' delegation syntax in **both** files.
