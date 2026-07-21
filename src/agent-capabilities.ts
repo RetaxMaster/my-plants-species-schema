@@ -36,6 +36,10 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'frequency.set': { allowed: true },
     'frequency.clear': { allowed: true },
     'care.done': { allowed: true },
+    // Clinical records are doctor-authored only (spec §4.4): the doctor diagnoses and files the case
+    // note, the gardener never does.
+    'clinical_record.create': { allowed: true },
+    'clinical_record.update': { allowed: true },
   },
   gardener: {
     'profile.update': { allowed: true },
@@ -46,6 +50,10 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'frequency.set': { allowed: true },
     'frequency.clear': { allowed: true },
     'care.done': { allowed: true },
+    // Withheld, never absent (ledger D4): the gardener scope exists and is classified for both new
+    // operations even though it may not exercise either of them.
+    'clinical_record.create': { allowed: false },
+    'clinical_record.update': { allowed: false },
   },
 };
 

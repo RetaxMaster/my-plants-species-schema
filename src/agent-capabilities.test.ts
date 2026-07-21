@@ -69,6 +69,15 @@ describe('an unknown scope denies explicitly instead of crashing', () => {
   });
 });
 
+it('the clinical operations are doctor-only', () => {
+  expect(AGENT_CAPABILITIES.doctor['clinical_record.create'].allowed).toBe(true);
+  expect(AGENT_CAPABILITIES.doctor['clinical_record.update'].allowed).toBe(true);
+  for (const scope of Object.keys(AGENT_CAPABILITIES).filter((s) => s !== 'doctor')) {
+    expect(AGENT_CAPABILITIES[scope as keyof typeof AGENT_CAPABILITIES]['clinical_record.create'].allowed).toBe(false);
+    expect(AGENT_CAPABILITIES[scope as keyof typeof AGENT_CAPABILITIES]['clinical_record.update'].allowed).toBe(false);
+  }
+});
+
 describe('assertOmitFieldsAreRealFields', () => {
   // The trap this closes: nothing else validates that an `omitFields` entry actually names a field that
   // exists on that operation's schema. A typo (`placeID` for `placeId`) would omit NOTHING, and the field
@@ -85,6 +94,7 @@ describe('permittedTypesFor', () => {
     expect(permittedTypesFor('doctor')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
+      'clinical_record.create', 'clinical_record.update',
     ]);
     expect(permittedTypesFor('gardener')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
