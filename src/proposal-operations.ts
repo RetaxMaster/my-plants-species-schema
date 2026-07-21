@@ -38,6 +38,39 @@ const frequencySet = z.object({ type: z.literal('frequency.set'), task, interval
 const frequencyClear = z.object({ type: z.literal('frequency.clear'), task }).strict();
 const careDone = z.object({ type: z.literal('care.done'), task, occurredOn: ymd }).strict();
 
+/**
+ * A clinical record body is Markdown and is by far the largest single operation this union carries.
+ * The cap is per-field and deliberately smaller than the envelope: ONE max-size record serializes to
+ * roughly 20 KB, comfortably inside MAX_SERIALIZED_BYTES. Several of them do NOT fit, and that is the
+ * intended behaviour — the envelope is what bounds a MULTI-operation proposal.
+ */
+export const MAX_CLINICAL_BODY_CHARS = 20_000;
+
+const clinicalBody = z.string().min(1).max(MAX_CLINICAL_BODY_CHARS);
+
+/**
+ * `recordedOn` is an explicit-intent ECHO, not a free choice: the server validates at APPLY time that it
+ * equals the plant's own current calendar day, and refuses anything else. An unbounded value would let a
+ * sealed past day be populated (the same power the same-day edit rule denies, through another door), and a
+ * future-dated record would be unreachable by `clinical_record.update` until that day arrived, at which
+ * point it would silently become editable.
+ */
+const clinicalRecordCreate = z.object({
+  type: z.literal('clinical_record.create'),
+  body: clinicalBody,
+  recordedOn: ymd.optional(),
+}).strict();
+
+/**
+ * Targets the record of the plant's CURRENT day, addressed by day rather than by id — there is at most one
+ * such record by construction (the @@unique([plantId, recordedOn]) constraint), and addressing it by day is
+ * what makes the same-day rule expressible at all. It therefore carries no date.
+ */
+const clinicalRecordUpdate = z.object({
+  type: z.literal('clinical_record.update'),
+  body: clinicalBody,
+}).strict();
+
 const IDENTITY_KEYS = new Set(['type', 'entryId', 'task']);
 const REQUIRES_A_FIELD = new Set(['profile.update', 'plant.update', 'progress.update']);
 

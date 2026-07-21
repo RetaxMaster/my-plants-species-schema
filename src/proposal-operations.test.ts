@@ -6,6 +6,7 @@ import {
   findOverlappingWriteSet,
   serializedBytes,
   MAX_OPERATIONS,
+  MAX_CLINICAL_BODY_CHARS,
   PROPOSAL_OPERATION_TYPES,
   discriminatedUnionMembers,
   type ProposalOperation,
@@ -109,5 +110,36 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
 describe('discriminatedUnionMembers', () => {
   it('throws a descriptive error when the schema is not a ZodEffects-wrapped discriminated union', () => {
     expect(() => discriminatedUnionMembers(z.string())).toThrow(/operationSchema.*internal shape changed/i);
+  });
+});
+
+describe('clinical record operations', () => {
+  it('accepts a create with just a body', () => {
+    expect(operationSchema.safeParse({ type: 'clinical_record.create', body: '# Note' }).success).toBe(true);
+  });
+  it('accepts a create with an explicit calendar recordedOn', () => {
+    expect(
+      operationSchema.safeParse({ type: 'clinical_record.create', body: '# Note', recordedOn: '2026-07-20' }).success,
+    ).toBe(true);
+  });
+  it('rejects an ISO instant for recordedOn', () => {
+    expect(
+      operationSchema.safeParse({ type: 'clinical_record.create', body: 'x', recordedOn: '2026-07-20T00:00:00Z' })
+        .success,
+    ).toBe(false);
+  });
+  it('rejects a body over MAX_CLINICAL_BODY_CHARS', () => {
+    const body = 'x'.repeat(MAX_CLINICAL_BODY_CHARS + 1);
+    expect(operationSchema.safeParse({ type: 'clinical_record.create', body }).success).toBe(false);
+  });
+  it('rejects an empty body', () => {
+    expect(operationSchema.safeParse({ type: 'clinical_record.create', body: '' }).success).toBe(false);
+  });
+  it('accepts an update with a body and rejects one carrying a date', () => {
+    expect(operationSchema.safeParse({ type: 'clinical_record.update', body: '# Revised' }).success).toBe(true);
+    expect(
+      operationSchema.safeParse({ type: 'clinical_record.update', body: '# Revised', recordedOn: '2026-07-20' })
+        .success,
+    ).toBe(false);
   });
 });
