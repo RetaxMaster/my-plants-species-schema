@@ -7,6 +7,7 @@ import {
   serializedBytes,
   MAX_OPERATIONS,
   MAX_CLINICAL_BODY_CHARS,
+  MAX_SERIALIZED_BYTES,
   PROPOSAL_OPERATION_TYPES,
   discriminatedUnionMembers,
   type ProposalOperation,
@@ -135,6 +136,39 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
 describe('discriminatedUnionMembers', () => {
   it('throws a descriptive error when the schema is not a ZodEffects-wrapped discriminated union', () => {
     expect(() => discriminatedUnionMembers(z.string())).toThrow(/operationSchema.*internal shape changed/i);
+  });
+});
+
+describe('single-operation serialization bound', () => {
+  // Per operation type, the LARGEST instance the schema will accept. This is a SINGLE-operation
+  // assertion on purpose: 10 x 20,000 characters is ~200 KB, about three times the 64 KiB envelope, so a
+  // proposal carrying several full-length records is refused by the envelope check — which is the
+  // intended behaviour, not a flaw. What must never happen is a VALID SINGLE operation being
+  // unsubmittable, and that is what this pins.
+  const maxInstances: Record<string, unknown> = {
+    'profile.update': { type: 'profile.update', potType: 'terracotta' },
+    'plant.update': { type: 'plant.update', nickname: 'n'.repeat(120), placeId: 'p'.repeat(64) },
+    'progress.create': { type: 'progress.create', health: 'GOOD', occurredOn: '2026-07-20', observations: 'o'.repeat(2000), sizeCm: 1, tags: [] },
+    'progress.update': { type: 'progress.update', entryId: 'e'.repeat(64), health: 'GOOD', occurredOn: '2026-07-20', observations: 'o'.repeat(2000), sizeCm: 1, tags: [] },
+    'progress.delete': { type: 'progress.delete', entryId: 'e'.repeat(64) },
+    'frequency.set': { type: 'frequency.set', task: 'WATER', intervalDays: 3650 },
+    'frequency.clear': { type: 'frequency.clear', task: 'WATER' },
+    'care.done': { type: 'care.done', task: 'WATER', occurredOn: '2026-07-20' },
+    'clinical_record.create': { type: 'clinical_record.create', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS), recordedOn: '2026-07-20' },
+    'clinical_record.update': { type: 'clinical_record.update', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS) },
+  };
+
+  const unionTypes = operationSchema.innerType().options.map(
+    (m) => (m.shape as { type: { _def: { value: string } } }).type._def.value,
+  );
+
+  it('covers every member of the union (a new operation must be added here)', () => {
+    expect(unionTypes.sort()).toEqual(Object.keys(maxInstances).sort());
+  });
+
+  it.each(Object.entries(maxInstances))('a lone maximum-size %s fits inside MAX_SERIALIZED_BYTES', (type, op) => {
+    expect(operationSchema.safeParse(op).success, `${type} max instance must be schema-valid`).toBe(true);
+    expect(serializedBytes([op])).toBeLessThanOrEqual(MAX_SERIALIZED_BYTES);
   });
 });
 
