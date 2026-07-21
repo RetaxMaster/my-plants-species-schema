@@ -1,0 +1,24 @@
+# Changelog
+
+All notable changes to the shared species-schema package are documented here. Written for humans: what
+changed for whoever depends on this package, not a commit dump.
+
+> **This is the first changelog for this repo** — it did not keep one before. History is not backfilled;
+> it starts with the changes below.
+
+## Unreleased
+
+### Added
+
+- **The Plant Doctor proposal-operations contract now lives here.** The discriminated union of the eight
+  proposal operations (`operationSchema` / `createProposalSchema`) plus its pure helpers
+  (`findOverlappingWriteSet`, `serializedBytes`) moved into this package as framework-agnostic Zod, so the
+  API and the Plant Doctor validate proposals against **one** definition instead of a hand-maintained copy.
+- **Care-operations vocabularies** — `FREQUENCY_BEARING_TASKS`, `PROGRESS_HEALTH_VALUES`, and `MAX_SIZE_CM`
+  are now exported here as the single shared source consumers derive from (kept in lock-step with the API's
+  Prisma enums and DTO by a parity test).
+- **A reusable tool-documentation renderer** at the `./tool-doc` subpath. It turns any Zod schema into a
+  Markdown reference — field tables with each field's full value vocabulary, one schema-validated JSON
+  example per tool, one-level sub-tables that expose nested-section vocabularies, and a `.refine()`
+  "tripwire" that fails the build if a cross-field invariant is added without documenting it — behind a
+  marker-protected write/check harness. The embedded agent repos use it to generate their `AGENT-TOOLS.md`.
