@@ -134,7 +134,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
     expect(PROPOSAL_OPERATION_TYPES).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
-      'clinical_record.create', 'clinical_record.update', 'place.create',
+      'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
     ]);
   });
 });
@@ -166,6 +166,11 @@ describe('single-operation serialization bound', () => {
       type: 'place.create', cityId: 'c'.repeat(64), name: 'n'.repeat(120), indoor: true,
       lightType: 'BRIGHT_INDIRECT', climateControlled: true, humidityCharacter: 'HUMID',
       indoorTempMinC: 18, indoorTempMaxC: 30, airflow: 'breezy',
+    },
+    'place.update': {
+      type: 'place.update', placeId: 'p'.repeat(64), name: 'n'.repeat(120), climateControlled: true,
+      lightType: 'BRIGHT_INDIRECT', humidityCharacter: 'HUMID', airflow: 'breezy',
+      indoorTempMinC: 18, indoorTempMaxC: 30,
     },
   };
 
@@ -228,5 +233,21 @@ describe('place.create', () => {
   });
   it('rejects an unknown light type', () => {
     expect(operationSchema.safeParse({ ...valid, lightType: 'BLINDING' }).success).toBe(false);
+  });
+});
+
+describe('place.update', () => {
+  it('accepts a single condition change', () => {
+    expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1', airflow: 'breezy' }).success).toBe(true);
+  });
+  it('rejects an op carrying only its target', () => {
+    expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1' }).success).toBe(false);
+  });
+  it('allows null to clear the nullable conditions', () => {
+    expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1', humidityCharacter: null }).success).toBe(true);
+  });
+  it('does NOT accept indoor or cityId — the owner cannot change them either', () => {
+    expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1', indoor: false }).success).toBe(false);
+    expect(operationSchema.safeParse({ type: 'place.update', placeId: 'P1', cityId: 'C2' }).success).toBe(false);
   });
 });

@@ -54,6 +54,22 @@ const placeCreate = z.object({
   airflow: airflowEnum.optional(),
 }).strict();
 
+// Mirrors UpdatePlaceDto (api src/places/update-place.dto.ts:9-18) EXACTLY: name/climateControlled/lightType
+// are optional-not-nullable; humidityCharacter/airflow/indoorTemp* are nullable (null clears). `indoor` and
+// `cityId` are deliberately ABSENT — they are create-only for the owner too (create-place.dto.ts), and the
+// agent must never exceed the owner's own reach.
+const placeUpdate = z.object({
+  type: z.literal('place.update'),
+  placeId: z.string().min(1),
+  name: z.string().min(1).max(120).optional(),
+  climateControlled: z.boolean().optional(),
+  lightType: lightTypeEnum.optional(),
+  humidityCharacter: humidityCharacterEnum.nullable().optional(),
+  airflow: airflowEnum.nullable().optional(),
+  indoorTempMinC: z.number().nullable().optional(),
+  indoorTempMaxC: z.number().nullable().optional(),
+}).strict();
+
 /**
  * A clinical record body is Markdown and is by far the largest single operation this union carries.
  * The cap is per-field and deliberately smaller than the envelope: ONE max-size record serializes to
@@ -95,12 +111,13 @@ const clinicalRecordUpdate = z.object({
 // error, not a silently-ignored map miss.
 const IDENTITY_KEYS_BY_TYPE: Partial<Record<ProposalOperationType, ReadonlySet<string>>> = {
   'progress.update': new Set(['type', 'entryId']),
+  'place.update': new Set(['type', 'placeId']),
 };
 const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
-const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update']);
+const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
