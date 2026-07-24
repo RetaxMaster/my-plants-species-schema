@@ -11,14 +11,25 @@ const task = z.enum(FREQUENCY_BEARING_TASKS);
 const health = z.enum(PROGRESS_HEALTH_VALUES);
 const progressTag = z.enum(PROGRESS_TAG_KEYS);
 
-const profileUpdate = plantProfileUpdateSchema.extend({ type: z.literal('profile.update') }).strict();
+// The plant a plant-scoped operation targets. It is OMITTED by the doctor — its token is already pinned to
+// one plant, and the capability map withholds this field from the doctor (`omitFields`), so a doctor
+// proposal can never name another plant — and SUPPLIED by the gardener, whose token is owner-anchored with
+// no pinned plant, so each plant-scoped op must name its own target within the owner's garden. It is
+// `.optional()` here because the operation schema is scope-agnostic; the applier resolves the effective
+// target as `op.plantId ?? proposal.plantId`, and the capability map (not this schema) enforces WHO may send
+// it. `plantId` is always IDENTITY, never a write field — see IDENTITY_KEYS_BY_TYPE and writeSet below.
+const plantTarget = z.string().min(1).optional();
+
+const profileUpdate = plantProfileUpdateSchema.extend({ type: z.literal('profile.update'), plantId: plantTarget }).strict();
 const plantUpdate = z.object({
   type: z.literal('plant.update'),
+  plantId: plantTarget,
   nickname: z.string().max(120).nullable().optional(),
   placeId: z.string().min(1).optional(),
 }).strict();
 const progressCreate = z.object({
   type: z.literal('progress.create'),
+  plantId: plantTarget,
   health,
   occurredOn: ymd.optional(),
   observations: z.string().max(2000).nullable().optional(),
@@ -27,6 +38,7 @@ const progressCreate = z.object({
 }).strict();
 const progressUpdate = z.object({
   type: z.literal('progress.update'),
+  plantId: plantTarget,
   entryId: z.string().min(1),
   health: health.optional(),
   occurredOn: ymd.optional(),
@@ -35,9 +47,9 @@ const progressUpdate = z.object({
   tags: z.array(progressTag).max(PROGRESS_TAG_KEYS.length).optional(),
 }).strict();
 const progressDelete = z.object({ type: z.literal('progress.delete'), entryId: z.string().min(1) }).strict();
-const frequencySet = z.object({ type: z.literal('frequency.set'), task, intervalDays: z.number().int().min(1).max(3650) }).strict();
-const frequencyClear = z.object({ type: z.literal('frequency.clear'), task }).strict();
-const careDone = z.object({ type: z.literal('care.done'), task, occurredOn: ymd }).strict();
+const frequencySet = z.object({ type: z.literal('frequency.set'), plantId: plantTarget, task, intervalDays: z.number().int().min(1).max(3650) }).strict();
+const frequencyClear = z.object({ type: z.literal('frequency.clear'), plantId: plantTarget, task }).strict();
+const careDone = z.object({ type: z.literal('care.done'), plantId: plantTarget, task, occurredOn: ymd }).strict();
 
 // Mirrors the owner's own CreatePlaceDto (api src/places/create-place.dto.ts) field for field — the agent
 // must never be able to create a shape the owner's own form cannot. One narrowing, deliberately kept
@@ -145,12 +157,16 @@ const clinicalRecordUpdate = z.object({
 
 // Identity keys are PER TYPE, not global. `placeId` identifies the target of `place.update` but is a WRITE
 // field on `plant.update` (relocation) — a single global set would reject a relocation-only plant.update as
-// "no field to change". Any type absent from this map falls to DEFAULT_IDENTITY_KEYS below. An entry is
-// added here in the SAME change as its operation's z.object — never ahead of it — so the key is checked
-// against the real ProposalOperationType union: a typo (or a member that hasn't landed yet) is a compile
-// error, not a silently-ignored map miss.
+// "no field to change". `plantId` is identity on EVERY plant-scoped op that carries it (it names the target
+// plant, never a change), so a gardener op supplying only `plantId` and no real field is correctly rejected
+// as "requires at least one field to change". Any type absent from this map falls to DEFAULT_IDENTITY_KEYS
+// below. An entry is added here in the SAME change as its operation's z.object — never ahead of it — so the
+// key is checked against the real ProposalOperationType union: a typo (or a member that hasn't landed yet)
+// is a compile error, not a silently-ignored map miss.
 const IDENTITY_KEYS_BY_TYPE: Partial<Record<ProposalOperationType, ReadonlySet<string>>> = {
-  'progress.update': new Set(['type', 'entryId']),
+  'profile.update': new Set(['type', 'plantId']),
+  'plant.update': new Set(['type', 'plantId']),
+  'progress.update': new Set(['type', 'plantId', 'entryId']),
   'place.update': new Set(['type', 'placeId']),
   'city.update': new Set(['type', 'cityId']),
 };
@@ -216,14 +232,25 @@ export type CreateProposalBody = z.infer<typeof createProposalSchema>;
 
 function writeSet(op: ProposalOperation): string[] {
   switch (op.type) {
-    case 'profile.update': return Object.keys(op).filter((k) => k !== 'type').map((k) => `profile:${k}`);
-    case 'plant.update': return Object.keys(op).filter((k) => k !== 'type').map((k) => `plant:${k}`);
+    // The key embeds `plantId` when the gardener supplied it, exactly as place.update/city.update embed
+    // their id below: the doctor's ops run inside a session pinned to ONE plant, so the field name alone is
+    // unambiguous, but a garden-wide gardener proposal can legitimately touch the SAME field on two DIFFERENT
+    // plants in one batch — dropping the id would make those collide. `plantId` itself is identity, never a
+    // written field, so it is filtered out of the field list.
+    case 'profile.update': {
+      const prefix = op.plantId ? `profile:${op.plantId}` : 'profile';
+      return Object.keys(op).filter((k) => k !== 'type' && k !== 'plantId').map((k) => `${prefix}:${k}`);
+    }
+    case 'plant.update': {
+      const prefix = op.plantId ? `plant:${op.plantId}` : 'plant';
+      return Object.keys(op).filter((k) => k !== 'type' && k !== 'plantId').map((k) => `${prefix}:${k}`);
+    }
     case 'progress.create': return []; // a create has no pre-existing target, so two creates never collide
     case 'progress.update':
-    case 'progress.delete': return [`entry:${op.entryId}`];
+    case 'progress.delete': return [`entry:${op.entryId}`]; // entryId is globally unique, so it already distinguishes plants
     case 'frequency.set':
-    case 'frequency.clear': return [`frequency:${op.task}`];
-    case 'care.done': return [`care:${op.task}:${op.occurredOn}`];
+    case 'frequency.clear': return [op.plantId ? `frequency:${op.plantId}:${op.task}` : `frequency:${op.task}`];
+    case 'care.done': return [op.plantId ? `care:${op.plantId}:${op.task}:${op.occurredOn}` : `care:${op.task}:${op.occurredOn}`];
     // A CONSTANT key, deliberately date-free, for BOTH operations.
     //
     // `clinical:<recordedOn>` is not computable here: this function is PURE — no database, no owner, no

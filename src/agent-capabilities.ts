@@ -27,15 +27,21 @@ export type OperationCapability = { allowed: boolean; omitFields?: readonly stri
  */
 export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType, OperationCapability>> = {
   doctor: {
-    'profile.update': { allowed: true },
-    // Relocation is the gardener's exclusively (spec §4.4): the doctor diagnoses, the gardener places.
-    'plant.update': { allowed: true, omitFields: ['placeId'] },
-    'progress.create': { allowed: true },
-    'progress.update': { allowed: true },
+    // `plantId` is withheld from the doctor on EVERY plant-scoped op: the doctor's token is pinned to ONE
+    // plant, so the applier must resolve the target from `proposal.plantId` (the pin), never from an
+    // agent-supplied `op.plantId`. Absent this field-level withholding a doctor proposal could name another
+    // of the owner's plants and reach it — a genuine privilege escalation across the doctor's one-plant
+    // boundary. The gardener, owner-anchored with no pin, is the scope that legitimately supplies `plantId`.
+    'profile.update': { allowed: true, omitFields: ['plantId'] },
+    // Relocation is the gardener's exclusively (spec §4.4): the doctor diagnoses, the gardener places. And
+    // like every plant-scoped op, the doctor may not name its target plant.
+    'plant.update': { allowed: true, omitFields: ['placeId', 'plantId'] },
+    'progress.create': { allowed: true, omitFields: ['plantId'] },
+    'progress.update': { allowed: true, omitFields: ['plantId'] },
     'progress.delete': { allowed: true },
-    'frequency.set': { allowed: true },
-    'frequency.clear': { allowed: true },
-    'care.done': { allowed: true },
+    'frequency.set': { allowed: true, omitFields: ['plantId'] },
+    'frequency.clear': { allowed: true, omitFields: ['plantId'] },
+    'care.done': { allowed: true, omitFields: ['plantId'] },
     // Clinical records are doctor-authored only (spec §4.4): the doctor diagnoses and files the case
     // note, the gardener never does.
     'clinical_record.create': { allowed: true },

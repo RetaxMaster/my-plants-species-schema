@@ -35,6 +35,15 @@ describe('operationSchema', () => {
   it('rejects an identity-only progress.update (entryId is IDENTITY here, not a write field)', () => {
     expect(operationSchema.safeParse({ type: 'progress.update', entryId: 'e1' }).success).toBe(false);
   });
+  it('accepts a gardener-targeted plant.update (plantId names the target, placeId is the write)', () => {
+    expect(operationSchema.safeParse({ type: 'plant.update', plantId: 'PLANT_1', placeId: 'PLACE_1' }).success).toBe(true);
+  });
+  it('rejects a plant.update carrying ONLY plantId (plantId is identity, not a write field)', () => {
+    expect(operationSchema.safeParse({ type: 'plant.update', plantId: 'PLANT_1' }).success).toBe(false);
+  });
+  it('accepts a gardener-targeted care.done (plantId selects the plant)', () => {
+    expect(operationSchema.safeParse({ type: 'care.done', plantId: 'PLANT_1', task: 'WATER', occurredOn: '2026-07-24' }).success).toBe(true);
+  });
 });
 
 describe('findOverlappingWriteSet', () => {
@@ -67,6 +76,22 @@ describe('findOverlappingWriteSet', () => {
       { type: 'plant.update', nickname: 'Fern' },
       { type: 'plant.update', nickname: 'Randy' },
     ] as ProposalOperation[])).toBe('plant:nickname');
+  });
+  it('does NOT collide two plant-scoped ops on the same field for DIFFERENT plants (gardener batch)', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'plant.update', plantId: 'PLANT_1', nickname: 'Fern' },
+      { type: 'plant.update', plantId: 'PLANT_2', nickname: 'Randy' },
+    ] as ProposalOperation[])).toBeNull();
+    expect(findOverlappingWriteSet([
+      { type: 'frequency.set', plantId: 'PLANT_1', task: 'WATER', intervalDays: 7 },
+      { type: 'frequency.set', plantId: 'PLANT_2', task: 'WATER', intervalDays: 5 },
+    ] as ProposalOperation[])).toBeNull();
+  });
+  it('DOES collide two plant-scoped ops on the same field for the SAME plant (plantId in the key)', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'frequency.set', plantId: 'PLANT_1', task: 'WATER', intervalDays: 7 },
+      { type: 'frequency.clear', plantId: 'PLANT_1', task: 'WATER' },
+    ] as ProposalOperation[])).toBe('frequency:PLANT_1:WATER');
   });
   it('returns null for two progress.create ops — a create has no pre-existing target, so creates never collide', () => {
     expect(findOverlappingWriteSet([

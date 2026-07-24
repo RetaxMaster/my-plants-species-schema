@@ -35,9 +35,9 @@ describe('the asymmetric and field-level rules', () => {
     expect(mayPropose('gardener', 'progress.delete')).toBe(false);
   });
 
-  it('withholds placeId from the doctor at FIELD level, keeping plant.update itself permitted', () => {
+  it('withholds placeId AND plantId from the doctor at FIELD level, keeping plant.update itself permitted', () => {
     expect(mayPropose('doctor', 'plant.update')).toBe(true);
-    expect(omittedFieldsFor('doctor', 'plant.update')).toEqual(['placeId']);
+    expect(omittedFieldsFor('doctor', 'plant.update')).toEqual(['placeId', 'plantId']);
     expect(omittedFieldsFor('gardener', 'plant.update')).toEqual([]);
   });
 
@@ -45,6 +45,22 @@ describe('the asymmetric and field-level rules', () => {
     expect(forbiddenFieldsIn('doctor', { type: 'plant.update', nickname: 'Randy' } as never)).toEqual([]);
     expect(forbiddenFieldsIn('doctor', { type: 'plant.update', placeId: 'p1' } as never)).toEqual(['placeId']);
     expect(forbiddenFieldsIn('gardener', { type: 'plant.update', placeId: 'p1' } as never)).toEqual([]);
+  });
+
+  // The security crux of the per-op plantId change: a doctor token is pinned to one plant, so it may never
+  // NAME a plant on any plant-scoped op — the map withholds `plantId` on all seven, and the gardener (which
+  // has no pin) is the scope that supplies it. A single missing `omitFields: ['plantId']` here would let a
+  // doctor proposal reach another of the owner's plants.
+  const PLANT_SCOPED_OPS = ['profile.update', 'plant.update', 'progress.create', 'progress.update', 'frequency.set', 'frequency.clear', 'care.done'] as const;
+  it('withholds plantId from the doctor on every plant-scoped op, and grants it to the gardener', () => {
+    for (const t of PLANT_SCOPED_OPS) {
+      expect(omittedFieldsFor('doctor', t)).toContain('plantId');
+      expect(omittedFieldsFor('gardener', t)).not.toContain('plantId');
+    }
+  });
+  it('flags a doctor-supplied plantId as forbidden, but a gardener-supplied one as allowed', () => {
+    expect(forbiddenFieldsIn('doctor', { type: 'care.done', plantId: 'pX', task: 'water', occurredOn: '2026-07-24' } as never)).toEqual(['plantId']);
+    expect(forbiddenFieldsIn('gardener', { type: 'care.done', plantId: 'pX', task: 'water', occurredOn: '2026-07-24' } as never)).toEqual([]);
   });
 });
 
@@ -103,8 +119,8 @@ describe('gardener capability rows (Spec 4 §5.2/§5.3)', () => {
     // ⚠️ The exported helper reports OMITTED fields, so the polarity is INVERTED relative to a
     // "may propose this field?" predicate. Assert the omission set directly — a mechanical rename of a
     // `mayProposeField(...)` call would leave two assertions that are both backwards and both green.
-    expect(omittedFieldsFor('gardener', 'plant.update')).toEqual([]);          // relocation granted
-    expect(omittedFieldsFor('doctor',  'plant.update')).toEqual(['placeId']);  // relocation withheld
+    expect(omittedFieldsFor('gardener', 'plant.update')).toEqual([]);                    // relocation + targeting granted
+    expect(omittedFieldsFor('doctor',  'plant.update')).toEqual(['placeId', 'plantId']); // relocation + targeting withheld
   });
 });
 
