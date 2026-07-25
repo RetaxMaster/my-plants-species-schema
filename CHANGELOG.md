@@ -10,7 +10,7 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
-- **The Plant Doctor proposal-operations contract now lives here.** The discriminated union of the ten
+- **The Plant Doctor proposal-operations contract now lives here.** The discriminated union of the fifteen
   proposal operations (`operationSchema` / `createProposalSchema`) plus its pure helpers
   (`findOverlappingWriteSet`, `serializedBytes`) moved into this package as framework-agnostic Zod, so the
   API and the Plant Doctor validate proposals against **one** definition instead of a hand-maintained copy.
@@ -23,12 +23,12 @@ changed for whoever depends on this package, not a commit dump.
   "tripwire" that fails the build if a cross-field invariant is added without documenting it — behind a
   marker-protected write/check harness. The embedded agent repos use it to generate their `AGENT-TOOLS.md`.
 - **A per-agent-role capability map**, at the new `./agent-capabilities` subpath. For each agent role
-  (`doctor`, `gardener`) and each of the ten proposal operations, it states whether that role may propose
-  the operation at all and, for an operation it may propose, which of its fields it may **not** set —
-  concretely, a `doctor`-scoped `plant.update` may no longer carry `placeId`. Consumers call `mayPropose()`
-  and `forbiddenFieldsIn()` instead of hand-rolling the same allow/deny logic per agent repo, and a bundled
-  check (`assertOmitFieldsAreRealFields`) fails the build if a withheld field name doesn't actually exist on
-  its operation's schema.
+  (`doctor`, `gardener`) and each of the fifteen proposal operations, it states whether that role may
+  propose the operation at all and, for an operation it may propose, which of its fields it may **not**
+  set — concretely, a `doctor`-scoped `plant.update` may no longer carry `placeId`. Consumers call
+  `mayPropose()` and `forbiddenFieldsIn()` instead of hand-rolling the same allow/deny logic per agent
+  repo, and a bundled check (`assertOmitFieldsAreRealFields`) fails the build if a withheld field name
+  doesn't actually exist on its operation's schema.
 - **The shared agent-side scaffolding**, at new `./agent-kit/*` subpaths (`workspace`, `api`, `db`,
   `codex-parity`, `codex-parity/repo-checks`, `guide-pair`) plus two published CLI bins
   (`agent-kit-codex-agents`, `agent-kit-codex-spawn-schema`). This is the session-workspace resolver, the
@@ -43,3 +43,12 @@ changed for whoever depends on this package, not a commit dump.
   capped at 20,000 characters. Both are classified **doctor-only** in the capability map, and a proposal that
   carries two clinical-record operations together is rejected outright — a plant has at most one such record
   per calendar day, so two in one proposal can only be redundant or contradictory.
+- **Five new garden operations, for the Gardener** — `place.create`, `place.update`, `city.create`,
+  `city.update` and `plant.create` — bring the union to **fifteen operations in total**. They let the
+  Gardener (via approved proposals, exactly like the doctor) add and adjust a place or a city and register a
+  new plant. Every plant-scoped operation also gained an optional per-operation `plantId`: the capability map
+  **withholds** it from the doctor (whose token is already pinned to one plant) and **supplies** it to the
+  gardener (whose token is anchored to the owner, so it must name which plant an operation targets).
+  Relocating a plant — `plant.update` with `placeId` set — is the gardener's exclusive grant; the doctor
+  remains refused that field. The capability map now covers both roles across all fifteen operations, and the
+  gardener is refused `progress.delete` and both `clinical_record.*` operations.
