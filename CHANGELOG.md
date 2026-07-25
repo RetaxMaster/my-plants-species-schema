@@ -62,3 +62,12 @@ changed for whoever depends on this package, not a commit dump.
   a role-specific privilege the way a diagnosis or a relocation is. The doctor's grant withholds the
   operation's `plantId` (its token is already pinned to one plant); the gardener's supplies it (its token is
   anchored to the owner, so it must name the plant the note belongs to).
+- **Two new proposal operations for the Plant Lifecycle module, `plant.memorialize` and `plant.gift`** —
+  bring the union to **eighteen operations in total**. They let the Plant Doctor or the Gardener ask to move
+  a plant to the pantheon (a permanent memorial) or mark it as gifted (reversible by the owner), exactly like
+  the owner's own equivalent buttons. Neither operation takes any fields of its own — the target plant is the
+  token's own pin (doctor) or the operation's own `plantId` (gardener), the same convention `note.create`
+  already established. Both operations are granted to **both** agent roles from the start: neither
+  transition is a role-specific privilege. There is deliberately **no** `plant.revive` operation in the
+  union — reviving a plant back from gifted is owner-only, enforced by leaving it out of the union entirely
+  rather than by a capability-map row that could later be misconfigured.
