@@ -52,3 +52,6 @@ changed for whoever depends on this package, not a commit dump.
   Relocating a plant — `plant.update` with `placeId` set — is the gardener's exclusive grant; the doctor
   remains refused that field. The capability map now covers both roles across all fifteen operations, and the
   gardener is refused `progress.delete` and both `clinical_record.*` operations.
+- **A shared image size ceiling, `IMAGE_MAX_EDGE`.** The single, versioned upper bound (1600 px) on the long
+  edge of any photo the app compresses before upload and the API resizes on the way in, so the two are
+  guaranteed to agree on the maximum photo size — raising the ceiling later is one change instead of two.
