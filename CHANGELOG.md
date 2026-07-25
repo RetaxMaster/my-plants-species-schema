@@ -55,3 +55,10 @@ changed for whoever depends on this package, not a commit dump.
 - **A shared image size ceiling, `IMAGE_MAX_EDGE`.** The single, versioned upper bound (1600 px) on the long
   edge of any photo the app compresses before upload and the API resizes on the way in, so the two are
   guaranteed to agree on the maximum photo size — raising the ceiling later is one change instead of two.
+- **A new proposal operation, `note.create`**, plus its shared bound `NOTE_MAX_LEN` (2000 characters) — bring
+  the union to **sixteen operations in total**. It lets the Plant Doctor or the Gardener leave a free-text
+  note on a plant, exactly like the owner's own "Agregar nota." Unlike the doctor-only clinical-record pair,
+  `note.create` is granted to **both** agent roles from the start in the capability map: writing a note isn't
+  a role-specific privilege the way a diagnosis or a relocation is. The doctor's grant withholds the
+  operation's `plantId` (its token is already pinned to one plant); the gardener's supplies it (its token is
+  anchored to the owner, so it must name the plant the note belongs to).
