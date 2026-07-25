@@ -130,12 +130,12 @@ describe('permittedTypesFor', () => {
   it('returns the union-ordered subset each scope may propose', () => {
     expect(permittedTypesFor('doctor')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
-      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
+      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'clinical_record.create', 'clinical_record.update',
     ]);
     expect(permittedTypesFor('gardener')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
-      'frequency.set', 'frequency.clear', 'care.done',
+      'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'place.create', 'place.update', 'city.create', 'city.update', 'plant.create',
     ]);
   });

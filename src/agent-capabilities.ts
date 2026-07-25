@@ -42,6 +42,9 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'frequency.set': { allowed: true, omitFields: ['plantId'] },
     'frequency.clear': { allowed: true, omitFields: ['plantId'] },
     'care.done': { allowed: true, omitFields: ['plantId'] },
+    // A free-form journal note follows the same plant-scoped asymmetry as progress.create: both roles
+    // may add one, and the doctor's `plantId` is withheld exactly like every other plant-scoped op.
+    'note.create': { allowed: true, omitFields: ['plantId'] },
     // Clinical records are doctor-authored only (spec §4.4): the doctor diagnoses and files the case
     // note, the gardener never does.
     'clinical_record.create': { allowed: true },
@@ -63,6 +66,8 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'frequency.set': { allowed: true },
     'frequency.clear': { allowed: true },
     'care.done': { allowed: true },
+    // Same asymmetry as progress.create: the gardener supplies its own `plantId`, unfiltered.
+    'note.create': { allowed: true },
     // Withheld, never absent (ledger D4): the gardener scope exists and is classified for both new
     // operations even though it may not exercise either of them.
     'clinical_record.create': { allowed: false },

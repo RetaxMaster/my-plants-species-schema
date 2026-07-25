@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { plantProfileUpdateSchema } from './plant-profile.js';
 import { PROGRESS_TAG_KEYS } from './progress-tag-constants.js';
-import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM } from './care-operations-constants.js';
+import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM, NOTE_MAX_LEN } from './care-operations-constants.js';
 import { airflowEnum, humidityCharacterEnum, lightTypeEnum } from './place.js';
 
 /** Calendar date, per the project's date rules. NEVER an ISO instant. */
@@ -50,6 +50,15 @@ const progressDelete = z.object({ type: z.literal('progress.delete'), entryId: z
 const frequencySet = z.object({ type: z.literal('frequency.set'), plantId: plantTarget, task, intervalDays: z.number().int().min(1).max(3650) }).strict();
 const frequencyClear = z.object({ type: z.literal('frequency.clear'), plantId: plantTarget, task }).strict();
 const careDone = z.object({ type: z.literal('care.done'), plantId: plantTarget, task, occurredOn: ymd }).strict();
+
+// A free-form owner/agent journal note. plantId follows the standard plant-scoped asymmetry
+// (doctor omits — capability map withholds it; gardener supplies). body is the note text, bounded by
+// the ONE shared NOTE_MAX_LEN. A CREATE: it appends a new PlantTimelineEvent row every time.
+const noteCreate = z.object({
+  type: z.literal('note.create'),
+  plantId: plantTarget,
+  body: z.string().min(1).max(NOTE_MAX_LEN),
+}).strict();
 
 // Mirrors the owner's own CreatePlaceDto (api src/places/create-place.dto.ts) field for field — the agent
 // must never be able to create a shape the owner's own form cannot. One narrowing, deliberately kept
@@ -174,7 +183,7 @@ const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
 const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
@@ -246,6 +255,7 @@ function writeSet(op: ProposalOperation): string[] {
       return Object.keys(op).filter((k) => k !== 'type' && k !== 'plantId').map((k) => `${prefix}:${k}`);
     }
     case 'progress.create': return []; // a create has no pre-existing target, so two creates never collide
+    case 'note.create': return []; // same reasoning: a new PlantTimelineEvent row every time, never a collision
     case 'progress.update':
     case 'progress.delete': return [`entry:${op.entryId}`]; // entryId is globally unique, so it already distinguishes plants
     case 'frequency.set':

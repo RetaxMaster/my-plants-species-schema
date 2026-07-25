@@ -12,6 +12,7 @@ import {
   discriminatedUnionMembers,
   type ProposalOperation,
 } from './proposal-operations.js';
+import { NOTE_MAX_LEN } from './care-operations-constants.js';
 
 describe('operationSchema', () => {
   it('accepts a valid care.done', () => {
@@ -158,7 +159,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
     // `toContain` — the exact-equality is what makes a forgotten consumer fail loudly instead of shipping.
     expect(PROPOSAL_OPERATION_TYPES).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
-      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done',
+      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
       'city.create', 'city.update', 'plant.create',
     ]);
@@ -186,6 +187,7 @@ describe('single-operation serialization bound', () => {
     'frequency.set': { type: 'frequency.set', task: 'WATER', intervalDays: 3650 },
     'frequency.clear': { type: 'frequency.clear', task: 'WATER' },
     'care.done': { type: 'care.done', task: 'WATER', occurredOn: '2026-07-20' },
+    'note.create': { type: 'note.create', plantId: 'p'.repeat(64), body: 'b'.repeat(NOTE_MAX_LEN) },
     'clinical_record.create': { type: 'clinical_record.create', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS), recordedOn: '2026-07-20' },
     'clinical_record.update': { type: 'clinical_record.update', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS) },
     'place.create': {
@@ -342,6 +344,29 @@ describe('garden write-set overlap', () => {
       { type: 'city.create', name: 'A', latitude: 0, longitude: 0, timezone: 'UTC' },
       { type: 'city.create', name: 'B', latitude: 1, longitude: 1, timezone: 'UTC' },
     ] as never)).toBeNull();
+  });
+});
+
+describe('note.create operation', () => {
+  it('is a member of the union', () => {
+    expect(PROPOSAL_OPERATION_TYPES).toContain('note.create');
+  });
+  it('accepts a body with an optional plantId', () => {
+    const parsed = operationSchema.parse({ type: 'note.create', body: 'Hoy la saqué al sol', plantId: 'p1' });
+    expect(parsed).toMatchObject({ type: 'note.create', body: 'Hoy la saqué al sol', plantId: 'p1' });
+    expect(operationSchema.parse({ type: 'note.create', body: 'sin plantId' })).toMatchObject({ type: 'note.create' });
+  });
+  it('rejects an empty body and a body over NOTE_MAX_LEN', () => {
+    expect(() => operationSchema.parse({ type: 'note.create', body: '' })).toThrow();
+    expect(() => operationSchema.parse({ type: 'note.create', body: 'x'.repeat(NOTE_MAX_LEN + 1) })).toThrow();
+  });
+  it('never collides in a write-set (two note creates are two new rows)', () => {
+    expect(
+      findOverlappingWriteSet([
+        { type: 'note.create', body: 'a', plantId: 'p1' },
+        { type: 'note.create', body: 'b', plantId: 'p1' },
+      ] as never),
+    ).toBeNull();
   });
 });
 
