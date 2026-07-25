@@ -64,6 +64,17 @@ describe('the asymmetric and field-level rules', () => {
   });
 });
 
+describe('note.create capability', () => {
+  it('is allowed for both scopes', () => {
+    expect(mayPropose('doctor', 'note.create')).toBe(true);
+    expect(mayPropose('gardener', 'note.create')).toBe(true);
+  });
+  it('withholds plantId from the doctor and supplies it to the gardener', () => {
+    expect(omittedFieldsFor('doctor', 'note.create')).toEqual(['plantId']);
+    expect(omittedFieldsFor('gardener', 'note.create')).toEqual([]);
+  });
+});
+
 describe('an unknown scope denies explicitly instead of crashing', () => {
   // A scope outside AGENT_SCOPES has no row in the map. Indexing straight into it would throw a raw
   // TypeError (a 500 that bypasses classifyFailure's VALIDATION mapping) — and the current callers only
