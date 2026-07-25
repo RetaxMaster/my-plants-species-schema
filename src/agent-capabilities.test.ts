@@ -143,11 +143,28 @@ describe('permittedTypesFor', () => {
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'clinical_record.create', 'clinical_record.update',
+      'plant.memorialize', 'plant.gift',
     ]);
     expect(permittedTypesFor('gardener')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'place.create', 'place.update', 'city.create', 'city.update', 'plant.create',
+      'plant.memorialize', 'plant.gift',
     ]);
+  });
+});
+
+describe('lifecycle capability rows (Spec 4 §5b)', () => {
+  it('allows both agents to memorialize and gift', () => {
+    for (const scope of AGENT_SCOPES) {
+      expect(mayPropose(scope, 'plant.memorialize')).toBe(true);
+      expect(mayPropose(scope, 'plant.gift')).toBe(true);
+    }
+  });
+  it('withholds plantId from the doctor on lifecycle ops, supplies it to the gardener', () => {
+    expect(omittedFieldsFor('doctor', 'plant.memorialize')).toContain('plantId');
+    expect(omittedFieldsFor('doctor', 'plant.gift')).toContain('plantId');
+    expect(omittedFieldsFor('gardener', 'plant.memorialize')).toEqual([]);
+    expect(omittedFieldsFor('gardener', 'plant.gift')).toEqual([]);
   });
 });

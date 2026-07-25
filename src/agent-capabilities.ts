@@ -56,6 +56,10 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'city.create': { allowed: false },
     'city.update': { allowed: false },
     'plant.create': { allowed: false },
+    // Lifecycle transitions (spec §5b): both agents may retire a plant to memorial or gift it away.
+    // Like every plant-scoped op, the doctor may not name its target plant.
+    'plant.memorialize': { allowed: true, omitFields: ['plantId'] },
+    'plant.gift': { allowed: true, omitFields: ['plantId'] },
   },
   gardener: {
     'profile.update': { allowed: true },
@@ -79,6 +83,10 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'city.create': { allowed: true },
     'city.update': { allowed: true },
     'plant.create': { allowed: true },
+    // Lifecycle transitions (spec §5b): the gardener is owner-anchored, so it supplies its own `plantId`,
+    // unfiltered, exactly like every other plant-scoped op it may propose.
+    'plant.memorialize': { allowed: true },
+    'plant.gift': { allowed: true },
   },
 };
 
