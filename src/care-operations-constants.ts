@@ -10,3 +10,11 @@ export type ProgressHealthValue = (typeof PROGRESS_HEALTH_VALUES)[number];
 
 /** The MariaDB signed-INT ceiling the progress sizeCm column caps at. */
 export const MAX_SIZE_CM = 2_147_483_647;
+
+/**
+ * The maximum length of a free-text plant timeline NOTE (`note.create` op + the owner's note routes +
+ * the web textarea). A generous journal note, comfortably inside the `@db.Text` column. ONE source —
+ * every validator across the client, the owner DTO and the agent op schema references THIS constant, so
+ * the bound can never drift between surfaces.
+ */
+export const NOTE_MAX_LEN = 2000;
