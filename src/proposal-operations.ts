@@ -131,6 +131,12 @@ const plantCreate = z.object({
   acquiredOn: ymd,
 }).strict();
 
+// Lifecycle transitions. Both carry ONLY the optional target plant — no writable fields — so they are
+// NOT in REQUIRES_A_FIELD (a transition legitimately changes state without a field patch). Doctor omits
+// plantId (pinned); gardener supplies it (owner-anchored). See spec §5b.
+const plantMemorialize = z.object({ type: z.literal('plant.memorialize'), plantId: plantTarget }).strict();
+const plantGift = z.object({ type: z.literal('plant.gift'), plantId: plantTarget }).strict();
+
 /**
  * A clinical record body is Markdown and is by far the largest single operation this union carries.
  * The cap is per-field and deliberately smaller than the envelope: ONE max-size record serializes to
@@ -183,7 +189,7 @@ const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
 const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate, plantMemorialize, plantGift])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
@@ -286,6 +292,12 @@ function writeSet(op: ProposalOperation): string[] {
     case 'place.create':
     case 'city.create':
     case 'plant.create': return [];
+    case 'plant.memorialize':
+    case 'plant.gift':
+      // ONE shared key per plant: catches memorialize+gift-in-one-proposal. A lifecycle op batched with an
+      // UNRELATED op on the same plant is NOT caught here — the mediator's target-aware pre-check owns that
+      // (API task T21). Mirrors how plant.update keys `plant:<plantId>:<field>`.
+      return [op.plantId ? `plant:${op.plantId}:lifecycle` : `plant:lifecycle`];
   }
 }
 

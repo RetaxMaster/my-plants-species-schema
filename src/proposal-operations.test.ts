@@ -45,6 +45,15 @@ describe('operationSchema', () => {
   it('accepts a gardener-targeted care.done (plantId selects the plant)', () => {
     expect(operationSchema.safeParse({ type: 'care.done', plantId: 'PLANT_1', task: 'WATER', occurredOn: '2026-07-24' }).success).toBe(true);
   });
+  it('accepts a plant.memorialize with no plantId (doctor-pinned)', () => {
+    expect(operationSchema.safeParse({ type: 'plant.memorialize' }).success).toBe(true);
+  });
+  it('accepts a plant.gift naming a target plant (gardener)', () => {
+    expect(operationSchema.safeParse({ type: 'plant.gift', plantId: 'PLANT_1' }).success).toBe(true);
+  });
+  it('rejects extra fields on a lifecycle op (strict)', () => {
+    expect(operationSchema.safeParse({ type: 'plant.memorialize', placeId: 'P' }).success).toBe(false);
+  });
 });
 
 describe('findOverlappingWriteSet', () => {
@@ -126,6 +135,22 @@ describe('findOverlappingWriteSet', () => {
   });
 });
 
+describe('findOverlappingWriteSet lifecycle', () => {
+  it('flags memorialize + gift on the same plant as overlapping (same lifecycle key)', () => {
+    const overlap = findOverlappingWriteSet([
+      { type: 'plant.memorialize', plantId: 'P1' },
+      { type: 'plant.gift', plantId: 'P1' },
+    ] as ProposalOperation[]);
+    expect(overlap).toBe('plant:P1:lifecycle');
+  });
+  it('does NOT flag lifecycle ops on different plants', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'plant.memorialize', plantId: 'P1' },
+      { type: 'plant.gift', plantId: 'P2' },
+    ] as ProposalOperation[])).toBeNull();
+  });
+});
+
 describe('serializedBytes', () => {
   it('counts UTF-8 bytes, not code units', () => {
     expect(serializedBytes('á')).toBe(Buffer.byteLength(JSON.stringify('á')));
@@ -161,7 +186,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
-      'city.create', 'city.update', 'plant.create',
+      'city.create', 'city.update', 'plant.create', 'plant.memorialize', 'plant.gift',
     ]);
   });
 });
@@ -212,6 +237,8 @@ describe('single-operation serialization bound', () => {
       type: 'plant.create', speciesSlug: 'nephrolepis-biserrata', placeId: 'p'.repeat(64),
       nickname: 'n'.repeat(120), acquiredOn: '2026-07-20',
     },
+    'plant.memorialize': { type: 'plant.memorialize', plantId: 'p'.repeat(64) },
+    'plant.gift': { type: 'plant.gift', plantId: 'p'.repeat(64) },
   };
 
   const unionTypes = operationSchema.innerType().options.map(
