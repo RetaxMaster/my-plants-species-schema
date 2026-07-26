@@ -10,6 +10,9 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
+- **`IDEMPOTENCY_KEY_HEADER` — the shared idempotency header name.** A new Zod-free constant (`'Idempotency-Key'`)
+  single-sourced here so the API's dedup interceptor and the web (BFF proxy + client) all read the one header
+  name and can never drift, the same single-source discipline as `IMAGE_MAX_EDGE`.
 - **The Plant Doctor proposal-operations contract now lives here.** The discriminated union of the fifteen
   proposal operations (`operationSchema` / `createProposalSchema`) plus its pure helpers
   (`findOverlappingWriteSet`, `serializedBytes`) moved into this package as framework-agnostic Zod, so the
