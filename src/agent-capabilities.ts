@@ -60,6 +60,11 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     // Like every plant-scoped op, the doctor may not name its target plant.
     'plant.memorialize': { allowed: true, omitFields: ['plantId'] },
     'plant.gift': { allowed: true, omitFields: ['plantId'] },
+    // Both agents legitimately learn "you repotted this into fresh soil last month" from the owner in
+    // conversation, and until now had no way to record it. It is a SUBSTRATE fact, not a relocation, so
+    // it does not touch the doctor/gardener `placeId` asymmetry — the doctor may propose it. Like every
+    // plant-scoped op, the doctor may not name its target plant.
+    'substrate.refresh': { allowed: true, omitFields: ['plantId'] },
   },
   gardener: {
     'profile.update': { allowed: true },
@@ -87,6 +92,9 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     // unfiltered, exactly like every other plant-scoped op it may propose.
     'plant.memorialize': { allowed: true },
     'plant.gift': { allowed: true },
+    // Owner-anchored, so it supplies its own `plantId`, unfiltered — exactly like every other
+    // plant-scoped op it may propose.
+    'substrate.refresh': { allowed: true },
   },
 };
 
