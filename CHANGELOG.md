@@ -8,8 +8,22 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.14.0
+
 ### Added
 
+- **A new soil mix: `all-purpose-perlite`.** All-purpose potting mix amended with perlite now has its own
+  slug in the shared vocabulary, so the care engine can schedule it as the faster-draining medium it is.
+- **The substrate now has two modelled properties.** `SUBSTRATE_CHARGE_DAYS` says how many days of food a
+  freshly-filled pot of each mix carries; `SUBSTRATE_LIFE_DAYS` says how long that mix's physical structure
+  keeps working before it is worth refreshing. They are deliberately independent: orchid bark holds almost
+  no food and still lasts three years.
+- **A new proposal operation, `substrate.refresh`** — brings the union to **nineteen operations in total**.
+  The Plant Doctor and the Gardener can now propose recording that a plant's medium was renewed on a given
+  day — something they could learn in conversation but had no way to write down. As always it is a proposal
+  the owner approves, never a direct write. Granted to both agent roles from the start; the doctor's grant
+  withholds `plantId` (its token is already pinned to one plant), the gardener's supplies it (its token is
+  anchored to the owner).
 - **`IDEMPOTENCY_KEY_HEADER` — the shared idempotency header name.** A new Zod-free constant (`'Idempotency-Key'`)
   single-sourced here so the API's dedup interceptor and the web (BFF proxy + client) all read the one header
   name and can never drift, the same single-source discipline as `IMAGE_MAX_EDGE`.
