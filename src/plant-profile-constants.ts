@@ -55,10 +55,15 @@ export type SoilMix = (typeof SOIL_MIXES)[number];
  * a reserve is a stock that empties on an absolute date, not a property of frequency.
  *
  * Only FOUR cells are sourced (`all-purpose` and `peat-based` here; the same two in
- * SUBSTRATE_LIFE_DAYS). Every other cell is a TUNED position in a defended ORDERING, chosen
- * conservatively: when in doubt assume LESS charge, because under-feeding is recoverable and salt burn
- * is not. Each cell has its own row in docs/care-engine.md §7.10 — one row per cell, never one row for
- * the table.
+ * SUBSTRATE_LIFE_DAYS). Every other cell is a TUNED position, defended by the ORDERING claims in
+ * docs/care-engine.md §7.15 — real material differences in how much starter nutrient a mix holds and how
+ * fast it structurally breaks down — never a nutrient-charge safety margin. An earlier version of this
+ * comment claimed the cells were placed conservatively, assuming less charge "because under-feeding is
+ * recoverable and salt burn is not"; that reasoning is backwards for this parameter: a SMALLER
+ * `chargeDays` makes `fertilizeFloor` release EARLIER, which risks feeding while real starter charge is
+ * still present — the salt-burn-risk direction, not the safe one. A LARGER `chargeDays` only ever delays
+ * the first feed past the point the real charge ran out, which is the recoverable direction. Each cell
+ * has its own row in docs/care-engine.md §7.10 — one row per cell, never one row for the table.
  */
 export const SUBSTRATE_CHARGE_DAYS: Record<SoilMix, number> = {
   aroid: 15,
