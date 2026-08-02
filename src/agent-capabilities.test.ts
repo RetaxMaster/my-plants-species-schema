@@ -143,13 +143,13 @@ describe('permittedTypesFor', () => {
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'clinical_record.create', 'clinical_record.update',
-      'plant.memorialize', 'plant.gift',
+      'plant.memorialize', 'plant.gift', 'substrate.refresh',
     ]);
     expect(permittedTypesFor('gardener')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
       'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'place.create', 'place.update', 'city.create', 'city.update', 'plant.create',
-      'plant.memorialize', 'plant.gift',
+      'plant.memorialize', 'plant.gift', 'substrate.refresh',
     ]);
   });
 });
@@ -166,5 +166,27 @@ describe('lifecycle capability rows (Spec 4 §5b)', () => {
     expect(omittedFieldsFor('doctor', 'plant.gift')).toContain('plantId');
     expect(omittedFieldsFor('gardener', 'plant.memorialize')).toEqual([]);
     expect(omittedFieldsFor('gardener', 'plant.gift')).toEqual([]);
+  });
+});
+
+describe('substrate.refresh capability rows (Spec 1 §7)', () => {
+  it('is allowed for BOTH scopes — a substrate fact is not a relocation', () => {
+    expect(mayPropose('doctor', 'substrate.refresh')).toBe(true);
+    expect(mayPropose('gardener', 'substrate.refresh')).toBe(true);
+  });
+
+  it('withholds plantId from the doctor and supplies it to the gardener', () => {
+    expect(omittedFieldsFor('doctor', 'substrate.refresh')).toEqual(['plantId']);
+    expect(omittedFieldsFor('gardener', 'substrate.refresh')).toEqual([]);
+  });
+
+  it('refuses a doctor op that names a plant, and accepts the gardener naming one', () => {
+    const op = { type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-08-01' } as never;
+    expect(forbiddenFieldsIn('doctor', op)).toEqual(['plantId']);
+    expect(forbiddenFieldsIn('gardener', op)).toEqual([]);
+  });
+
+  it('names a real field in omitFields (no typo)', () => {
+    expect(() => assertOmitFieldsAreRealFields()).not.toThrow();
   });
 });
