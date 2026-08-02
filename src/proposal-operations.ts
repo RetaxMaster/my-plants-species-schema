@@ -137,6 +137,24 @@ const plantCreate = z.object({
 const plantMemorialize = z.object({ type: z.literal('plant.memorialize'), plantId: plantTarget }).strict();
 const plantGift = z.object({ type: z.literal('plant.gift'), plantId: plantTarget }).strict();
 
+// Records that the plant's medium was renewed on a given day. plantId follows the standard plant-scoped
+// asymmetry (doctor omits — the capability map withholds it; gardener supplies it).
+//
+// `refreshedOn` is REQUIRED, unlike the owner-facing registration and REPOT-DONE flows, which may anchor
+// to the event's own date. An agent proposing a refresh always names the date it learned about, and a
+// proposal is not itself an event with a date of its own.
+//
+// `charged` OMITTED means "derive from the mix" (a null override), NOT "preserve whatever was stored".
+// See refreshSubstrateCore's contract: a caller that says nothing about charge is not claiming anything
+// about it, and preserving a prior value would let a partial proposal keep a stale override from an
+// earlier, unrelated refresh.
+const substrateRefresh = z.object({
+  type: z.literal('substrate.refresh'),
+  plantId: plantTarget,
+  refreshedOn: ymd,
+  charged: z.boolean().optional(),
+}).strict();
+
 /**
  * A clinical record body is Markdown and is by far the largest single operation this union carries.
  * The cap is per-field and deliberately smaller than the envelope: ONE max-size record serializes to
@@ -185,11 +203,14 @@ const IDENTITY_KEYS_BY_TYPE: Partial<Record<ProposalOperationType, ReadonlySet<s
   'place.update': new Set(['type', 'placeId']),
   'city.update': new Set(['type', 'cityId']),
 };
+// `substrate.refresh` is deliberately ABSENT from both this map and REQUIRES_A_FIELD: `refreshedOn` is
+// required by its schema, so it can never arrive with nothing to change, and its only identity key is
+// the default `type` (+ the globally-identity `plantId`, handled in writeSet below).
 const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
 const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate, plantMemorialize, plantGift])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate, plantMemorialize, plantGift, substrateRefresh])
   .superRefine((op, ctx) => {
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
@@ -298,6 +319,15 @@ function writeSet(op: ProposalOperation): string[] {
       // UNRELATED op on the same plant is NOT caught here — the mediator's target-aware pre-check owns that
       // (API task T21). Mirrors how plant.update keys `plant:<plantId>:<field>`.
       return [op.plantId ? `plant:${op.plantId}:lifecycle` : `plant:lifecycle`];
+    case 'substrate.refresh': {
+      // Target-qualified when the gardener supplied a plantId, exactly like profile.update/plant.update
+      // above: an owner-anchored gardener may legitimately refresh the substrate of TWO DIFFERENT plants
+      // in one proposal, and a key naming only the columns would make those collide with each other. The
+      // doctor's session is pinned to one plant, so the bare field name is already unambiguous — which is
+      // why this keys on the PRESENCE of plantId, never on the scope.
+      const prefix = op.plantId ? `substrate:${op.plantId}` : 'substrate';
+      return [`${prefix}:refreshedOn`, `${prefix}:charged`];
+    }
   }
 }
 

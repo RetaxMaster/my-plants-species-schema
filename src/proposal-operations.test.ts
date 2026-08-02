@@ -187,6 +187,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
       'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
       'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
       'city.create', 'city.update', 'plant.create', 'plant.memorialize', 'plant.gift',
+      'substrate.refresh',
     ]);
   });
 });
@@ -239,6 +240,7 @@ describe('single-operation serialization bound', () => {
     },
     'plant.memorialize': { type: 'plant.memorialize', plantId: 'p'.repeat(64) },
     'plant.gift': { type: 'plant.gift', plantId: 'p'.repeat(64) },
+    'substrate.refresh': { type: 'substrate.refresh', plantId: 'p'.repeat(64), refreshedOn: '2026-08-01', charged: true },
   };
 
   const unionTypes = operationSchema.innerType().options.map(
@@ -394,6 +396,63 @@ describe('note.create operation', () => {
         { type: 'note.create', body: 'b', plantId: 'p1' },
       ] as never),
     ).toBeNull();
+  });
+});
+
+describe('substrate.refresh (Spec 1 §7)', () => {
+  it('is a member of the operation union', () => {
+    expect(PROPOSAL_OPERATION_TYPES).toContain('substrate.refresh');
+  });
+
+  it('accepts a gardener-shaped op (plantId supplied) and a doctor-shaped one (plantId omitted)', () => {
+    expect(operationSchema.safeParse({
+      type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-08-01', charged: true,
+    }).success).toBe(true);
+    expect(operationSchema.safeParse({
+      type: 'substrate.refresh', refreshedOn: '2026-08-01',
+    }).success).toBe(true);
+  });
+
+  // `refreshedOn` is REQUIRED here, unlike the owner-facing flows: an agent proposing a refresh always
+  // names the date it learned about. A proposal is not itself an event with its own date the way a
+  // registration or a REPOT completion is, so there is no "anchor to today" fallback to fall back TO.
+  it('requires refreshedOn, and requires it to be a calendar date', () => {
+    expect(operationSchema.safeParse({ type: 'substrate.refresh', plantId: 'p1' }).success).toBe(false);
+    expect(operationSchema.safeParse({
+      type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-08-01T00:00:00Z',
+    }).success).toBe(false);
+  });
+
+  it('is strict — an unknown field is rejected', () => {
+    expect(operationSchema.safeParse({
+      type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-08-01', soilMix: 'aroid',
+    }).success).toBe(false);
+  });
+
+  // The write-set key MUST be target-qualified when plantId is supplied. A gardener may legitimately
+  // refresh TWO different plants in one proposal; an id-free key would make those collide.
+  it('collides on the SAME plant and does NOT collide on DIFFERENT plants', () => {
+    const same = findOverlappingWriteSet([
+      { type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-08-01' },
+      { type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-07-01' },
+    ] as never);
+    expect(same).not.toBeNull();
+
+    const different = findOverlappingWriteSet([
+      { type: 'substrate.refresh', plantId: 'p1', refreshedOn: '2026-08-01' },
+      { type: 'substrate.refresh', plantId: 'p2', refreshedOn: '2026-08-01' },
+    ] as never);
+    expect(different).toBeNull();
+  });
+
+  // The doctor's session is pinned to one plant, so for it the field name alone is unambiguous — which
+  // is why the live pattern keys on the PRESENCE of plantId, not on the scope.
+  it('collides for two id-free (doctor-shaped) refreshes', () => {
+    const overlap = findOverlappingWriteSet([
+      { type: 'substrate.refresh', refreshedOn: '2026-08-01' },
+      { type: 'substrate.refresh', refreshedOn: '2026-07-01' },
+    ] as never);
+    expect(overlap).not.toBeNull();
   });
 });
 
