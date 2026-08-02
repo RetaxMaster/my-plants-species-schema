@@ -46,6 +46,10 @@
       "types": "./dist/repot-sign.d.ts",
       "import": "./dist/repot-sign.js"
     },
+    "./repot-sign-universal": {
+      "types": "./dist/repot-sign-universal.d.ts",
+      "import": "./dist/repot-sign-universal.js"
+    },
     "./tool-doc": {
       "types": "./dist/tool-doc.d.ts",
       "import": "./dist/tool-doc.js"
