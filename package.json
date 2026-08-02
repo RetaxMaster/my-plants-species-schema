@@ -38,6 +38,10 @@
       "types": "./dist/feedback-reason-constants.d.ts",
       "import": "./dist/feedback-reason-constants.js"
     },
+    "./repot-sign-constants": {
+      "types": "./dist/repot-sign-constants.d.ts",
+      "import": "./dist/repot-sign-constants.js"
+    },
     "./tool-doc": {
       "types": "./dist/tool-doc.d.ts",
       "import": "./dist/tool-doc.js"
