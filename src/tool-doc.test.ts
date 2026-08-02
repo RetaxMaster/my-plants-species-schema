@@ -79,6 +79,27 @@ describe('renderToolDoc', () => {
     expect(md).toContain('#### `section`');
     expect(md).toContain('| `mode` | `a` \\| `b` \\| `c` | required |');
   });
+  it('renders a sub-table for an array-of-object field, documenting the ELEMENT shape (not the array)', () => {
+    const withArrayOfObjects = z.object({
+      type: z.literal('demo'),
+      cultivars: z.array(z.object({
+        name: z.string(),
+        description: z.string().describe('What this cultivar looks like.').optional(),
+      })).default([]),
+    }).strict();
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{ name: 'demo', schema: withArrayOfObjects, example: { type: 'demo', cultivars: [] } }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    // The top-level field still describes as "array of object", never expanded inline.
+    expect(md).toContain('| `cultivars` | array of object | optional |');
+    // Its own sub-table documents the ELEMENT fields, with a Description column since one carries a .describe().
+    expect(md).toContain('#### `cultivars`');
+    expect(md).toContain('| Field | Type | Required | Description |');
+    expect(md).toContain('| `name` | string | required |  |');
+    expect(md).toContain('| `description` | string | optional | What this cultivar looks like. |');
+  });
 });
 
 const refined = z.object({ min: z.number(), max: z.number() }).refine((v) => v.min <= v.max, { message: 'min<=max' });
