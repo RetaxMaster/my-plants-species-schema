@@ -8,6 +8,7 @@ import {
   SENSITIVITY,
   SOIL_DRYNESS,
 } from './enums.js';
+import { localizedList, localizedText } from './localized.js';
 
 const lightRank = (level: (typeof LIGHT_LEVELS)[number]): number => LIGHT_LEVELS.indexOf(level);
 
@@ -21,16 +22,29 @@ export const wateringSchema = z.object({
   reduceInDormancy: z.boolean(),
 });
 
-export const mistingSchema = z
-  .object({
-    benefit: z.enum(MISTING_BENEFIT).default('avoid'),
-    baseFrequencyDays: z.number().int().positive().nullable().default(null),
-    note: z.string().min(1).nullable().default(null),
-  })
-  .refine(
-    (m) => (m.benefit === 'avoid' ? m.baseFrequencyDays === null : m.baseFrequencyDays !== null),
-    { message: 'baseFrequencyDays must be set when benefit is beneficial/tolerated, and null when avoid' },
-  );
+// The un-refined object is exported so the CANONICAL WRITE schema (species-record-write.ts) can `.extend()`
+// it with the *Write field and re-apply the SAME refinement predicate. A ZodEffects cannot be extended, so
+// without this the write schema would have to re-declare the section — the fork this project forbids.
+export const mistingObject = z.object({
+  benefit: z.enum(MISTING_BENEFIT).default('avoid'),
+  baseFrequencyDays: z.number().int().positive().nullable().default(null),
+  note: localizedText
+    .nullable()
+    .default(null)
+    .describe(
+      'Optional misting note. Authored in BOTH locales as { "en": "…", "es": "…" }; a bare string is the ' +
+        'legacy English-only shape and is rejected on write.',
+    ),
+});
+
+/** The ONE misting invariant, shared by the read and write schemas. */
+export const mistingRefinement = (m: { benefit: string; baseFrequencyDays: number | null }): boolean =>
+  m.benefit === 'avoid' ? m.baseFrequencyDays === null : m.baseFrequencyDays !== null;
+export const MISTING_REFINEMENT_MESSAGE = {
+  message: 'baseFrequencyDays must be set when benefit is beneficial/tolerated, and null when avoid',
+};
+
+export const mistingSchema = mistingObject.refine(mistingRefinement, MISTING_REFINEMENT_MESSAGE);
 
 export const lightSchema = z
   .object({
@@ -74,22 +88,39 @@ export const repottingSchema = z.object({
 });
 
 export const maintenanceSchema = z.object({
-  pruning: z.string().min(1),
+  pruning: localizedText.describe(
+    'How and when to prune. REQUIRED IN BOTH LOCALES: authored as { "en": "…", "es": "…" }. When a species ' +
+      'has little to say in Spanish, write a real short translated sentence — never a placeholder and ' +
+      'never a copy of the English string.',
+  ),
   rotationDays: z.number().int().positive().nullable(),
   leafCleaningDays: z.number().int().positive().nullable(),
-  commonPests: z.array(z.string().min(1)).default([]),
+  commonPests: localizedList
+    .default([])
+    .describe(
+      'The pests this species commonly gets. Authored as { "en": [...], "es": [...] }. A genuinely ' +
+        'pest-free species is an EMPTY list in both locales — that is an honest curated answer, not a gap.',
+    ),
 });
 
-export const nativeClimateSchema = z
-  .object({
-    description: z.string().min(1),
-    koppen: z.string().optional(),
-    hardinessMinC: z.number(),
-    hardinessMaxC: z.number(),
-  })
-  .refine((n) => n.hardinessMinC <= n.hardinessMaxC, {
-    message: 'hardinessMinC must be <= hardinessMaxC',
-  });
+export const nativeClimateObject = z.object({
+  description: localizedText.describe(
+    'The species’ native climate in prose. REQUIRED IN BOTH LOCALES — { "en": "…", "es": "…" }.',
+  ),
+  koppen: z.string().optional(),
+  hardinessMinC: z.number(),
+  hardinessMaxC: z.number(),
+});
+
+/** The ONE native-climate invariant, shared by the read and write schemas. */
+export const nativeClimateRefinement = (n: { hardinessMinC: number; hardinessMaxC: number }): boolean =>
+  n.hardinessMinC <= n.hardinessMaxC;
+export const NATIVE_CLIMATE_REFINEMENT_MESSAGE = { message: 'hardinessMinC must be <= hardinessMaxC' };
+
+export const nativeClimateSchema = nativeClimateObject.refine(
+  nativeClimateRefinement,
+  NATIVE_CLIMATE_REFINEMENT_MESSAGE,
+);
 
 // A named horticultural variety within the species (e.g. Dracaena fragrans 'Massangeana').
 // PURELY INFORMATIONAL: it carries identity + appearance for humans, NOT care overrides — a
@@ -100,8 +131,12 @@ export const cultivarSchema = z.object({
   name: z.string().min(1),
   alsoKnownAs: z.array(z.string().min(1)).default([]),
   group: z.string().min(1).nullable(),
-  description: z.string().min(1),
-  careNote: z.string().min(1).nullable(),
+  description: localizedText.describe(
+    'What this cultivar looks like. REQUIRED IN BOTH LOCALES — { "en": "…", "es": "…" }.',
+  ),
+  careNote: localizedText
+    .nullable()
+    .describe('Optional care nuance for this cultivar, in both locales; null when there is none.'),
 });
 
 export const sourceSchema = z.object({
