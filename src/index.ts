@@ -20,3 +20,4 @@ export * from './proposal-operations.js';
 export * from './idempotency-constants.js';
 export * from './repot-sign-constants.js';
 export * from './repot-sign.js';
+export * from './repot-sign-universal.js';
