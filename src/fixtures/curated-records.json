@@ -1,0 +1,853 @@
+[
+  {
+    "slug": "dracaena-fragrans",
+    "record": {
+      "scientificName": "Dracaena fragrans",
+      "commonNamesEn": [
+        "Corn plant",
+        "Cornstalk dracaena",
+        "Fragrant dracaena",
+        "Striped dracaena"
+      ],
+      "commonNamesEs": [
+        "Palo de agua",
+        "Tronco de Brasil",
+        "Palo de Brasil"
+      ],
+      "watering": {
+        "baseIntervalDays": 10,
+        "soilDrynessBeforeWatering": "top-inch-dry",
+        "droughtTolerance": "medium",
+        "temperatureSensitivity": "high",
+        "lightSensitivity": "medium",
+        "humiditySensitivity": "low",
+        "reduceInDormancy": true
+      },
+      "misting": {
+        "benefit": "avoid",
+        "baseFrequencyDays": null,
+        "note": null
+      },
+      "light": {
+        "minimum": "low",
+        "ideal": "bright-indirect",
+        "maximum": "bright-indirect"
+      },
+      "temperature": {
+        "survivalMinC": 10,
+        "idealMinC": 15,
+        "idealMaxC": 24,
+        "survivalMaxC": 32
+      },
+      "humidity": {
+        "minimumPct": 30,
+        "idealPct": 45
+      },
+      "fertilizing": {
+        "activeSeasons": [
+          "spring",
+          "summer"
+        ],
+        "inSeasonFrequencyDays": 30,
+        "reduceInDormancy": true
+      },
+      "repotting": {
+        "typicalIntervalMonths": 24,
+        "signs": [
+          "Roots emerging from drainage holes",
+          "Roots circling the inside of the pot or becoming pot-bound",
+          "Water draining straight through with little absorption",
+          "Slowed growth during the active season"
+        ]
+      },
+      "maintenance": {
+        "pruning": "No routine pruning is required. If stems become too long, leggy or bare, cut them back at the desired height in spring; new leaf clusters will sprout below the cut, and the removed cane sections can be used for propagation. Remove brown or yellowing lower leaves as they age. This applies equally to the species and its variegated cultivars ('Massangeana', 'Lemon Lime').",
+        "rotationDays": 14,
+        "leafCleaningDays": 14,
+        "commonPests": [
+          "Spider mites",
+          "Thrips",
+          "Scale",
+          "Mealybugs"
+        ]
+      },
+      "nativeClimate": {
+        "description": "Native to tropical Africa, where it grows as an understory plant in warm, humid, frost-free forest and woodland habitats with filtered light. It can reach 15 feet or more in the wild. It is sensitive to cold and to fluoride in water/soil, which causes leaf-tip browning. The species now also encompasses the former Dracaena deremensis (treated as the Deremensis Group), from which popular variegated cultivars such as 'Lemon Lime' derive; these share the same native habitat and care needs.",
+        "koppen": "Aw",
+        "hardinessMinC": -1,
+        "hardinessMaxC": 12
+      },
+      "cultivars": [
+        {
+          "name": "Massangeana",
+          "alsoKnownAs": [
+            "Mass cane"
+          ],
+          "group": null,
+          "description": "The classic corn plant and the most widely grown form of the species: each glossy, dark-green, strap-shaped leaf carries a broad yellow-to-lime stripe running down its centre.",
+          "careNote": "Give it the brighter end of bright-indirect light to keep the central stripe vivid; in deep shade the variegation fades toward plain green."
+        },
+        {
+          "name": "Lemon Lime",
+          "alsoKnownAs": [],
+          "group": "Deremensis Group",
+          "description": "A brighter, more upright selection whose narrower leaves are striped lengthwise in vivid chartreuse and lemon-lime. It belongs to the Deremensis Group — the former species Dracaena deremensis, now folded into D. fragrans — so it may also be sold labelled 'Dracaena deremensis Lemon Lime'; it is the same species.",
+          "careNote": "Its bright chartreuse striping depends on good light: keep it in bright indirect light to hold the colour, avoiding both deep shade (which greens it out) and harsh direct sun (which scorches it)."
+        }
+      ],
+      "metadata": {
+        "confidence": "high",
+        "sources": [
+          {
+            "title": "Dracaena fragrans - Missouri Botanical Garden Plant Finder",
+            "url": "https://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?taxonid=282260",
+            "accessedAt": "2026-06-18"
+          },
+          {
+            "title": "Dracaena fragrans - North Carolina Extension Gardener Plant Toolbox",
+            "url": "https://plants.ces.ncsu.edu/plants/dracaena-fragrans/",
+            "accessedAt": "2026-06-18"
+          },
+          {
+            "title": "Dracaena fragrans (corn plant) - Royal Horticultural Society",
+            "url": "https://www.rhs.org.uk/plants/6093/dracaena-fragrans/details",
+            "accessedAt": "2026-06-18"
+          },
+          {
+            "title": "Dracaena - Clemson Cooperative Extension Home & Garden Information Center",
+            "url": "https://hgic.clemson.edu/factsheet/dracaena/",
+            "accessedAt": "2026-06-18"
+          },
+          {
+            "title": "Dracaena fragrans (Deremensis Group) 'Lemon Lime' - Missouri Botanical Garden Plant Finder",
+            "url": "https://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?taxonid=366918",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Dracaena fragrans (Deremensis Group) 'Lemon Lime' - Royal Horticultural Society",
+            "url": "https://www.rhs.org.uk/plants/119080/dracaena-fragrans-(deremensis-group)-lemon-lime-(v)/details",
+            "accessedAt": "2026-06-19"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "slug": "dracaena-trifasciata",
+    "record": {
+      "scientificName": "Dracaena trifasciata",
+      "commonNamesEn": [
+        "Snake plant",
+        "Mother-in-law's tongue",
+        "Saint George's sword",
+        "Viper's bowstring hemp",
+        "Sansevieria"
+      ],
+      "commonNamesEs": [
+        "Lengua de suegra",
+        "Espada de San Jorge",
+        "Lengua de tigre",
+        "Rabo de tigre",
+        "Sansevieria"
+      ],
+      "watering": {
+        "baseIntervalDays": 14,
+        "soilDrynessBeforeWatering": "fully-dry",
+        "droughtTolerance": "high",
+        "temperatureSensitivity": "medium",
+        "lightSensitivity": "high",
+        "humiditySensitivity": "low",
+        "reduceInDormancy": true
+      },
+      "misting": {
+        "benefit": "avoid",
+        "baseFrequencyDays": null,
+        "note": null
+      },
+      "light": {
+        "minimum": "low",
+        "ideal": "bright-indirect",
+        "maximum": "direct"
+      },
+      "temperature": {
+        "survivalMinC": 10,
+        "idealMinC": 15,
+        "idealMaxC": 24,
+        "survivalMaxC": 32
+      },
+      "humidity": {
+        "minimumPct": 30,
+        "idealPct": 40
+      },
+      "fertilizing": {
+        "activeSeasons": [
+          "spring",
+          "summer"
+        ],
+        "inSeasonFrequencyDays": 30,
+        "reduceInDormancy": true
+      },
+      "repotting": {
+        "typicalIntervalMonths": 48,
+        "signs": [
+          "roots and leaves completely fill the container",
+          "roots circling or pushing out of drainage holes",
+          "pot is cracking or being deformed by dense rhizomes",
+          "plant becomes top-heavy and topples easily",
+          "growth has noticeably slowed and soil dries out very fast"
+        ]
+      },
+      "maintenance": {
+        "pruning": "Minimal. Remove damaged, mushy, or dead leaves by cutting them at the soil line; wear gloves as the sap can irritate skin. Snip off spent flower stalks after blooming. Do not top healthy leaves, as a cut leaf will not regrow its pointed tip.",
+        "rotationDays": 30,
+        "leafCleaningDays": 30,
+        "commonPests": [
+          "mealybugs",
+          "spider mites",
+          "vine weevils",
+          "fungus gnats (a sign of overwatering)",
+          "root rot from overwatering (not a pest, but the primary killer)"
+        ]
+      },
+      "nativeClimate": {
+        "description": "Native to tropical West Africa, from Nigeria east to the Congo. Grows as a hardy, rhizomatous understory and rocky-ground species in warm, frost-free tropical regions with pronounced dry periods. It is a CAM (crassulacean acid metabolism) succulent-like plant adapted to withstand drought, which is why it tolerates long dry spells and is killed far more often by overwatering than by underwatering.",
+        "koppen": "Aw",
+        "hardinessMinC": 1,
+        "hardinessMaxC": 10
+      },
+      "cultivars": [
+        {
+          "name": "Laurentii",
+          "alsoKnownAs": [
+            "variegated snake plant",
+            "striped mother-in-law's tongue"
+          ],
+          "group": null,
+          "description": "The classic variegated snake plant: tall, upright, sword-shaped leaves in dark green with horizontal grey-green banding, edged by bold vibrant yellow margins running the length of each leaf.",
+          "careNote": "Its yellow variegation is chimeral, so it will NOT come true from leaf cuttings — leaf-section propagation produces plain green offsets. Propagate by division/offsets to keep the yellow margins."
+        },
+        {
+          "name": "Bantel's Sensation",
+          "alsoKnownAs": [
+            "White Sansevieria",
+            "White Snake Plant"
+          ],
+          "group": null,
+          "description": "Distinctly narrow leaves (roughly 1-2 in / 2.5-5 cm wide) marked with striking vertical white-and-green stripes running lengthwise, rather than the usual horizontal banding.",
+          "careNote": "Variegated; propagate by division rather than leaf cuttings to preserve the white striping."
+        },
+        {
+          "name": "Moonshine",
+          "alsoKnownAs": [
+            "Moonglow",
+            "silver snake plant"
+          ],
+          "group": null,
+          "description": "Broad, upright leaves of a pale, silvery grey-green with light green blotching and only a thin dark green margin, giving the whole plant a soft, almost luminous look.",
+          "careNote": "The pale, low-chlorophyll leaves hold their silvery colour best in bright indirect light; in deep shade they can fade toward plain green."
+        },
+        {
+          "name": "Hahnii",
+          "alsoKnownAs": [
+            "bird's nest snake plant",
+            "dwarf snake plant"
+          ],
+          "group": null,
+          "description": "A dwarf form, typically only 15-20 cm tall, whose 6-12 short leaves form a low, funnel-shaped rosette like a bird's nest; dark green with creamy-white horizontal banding.",
+          "careNote": null
+        },
+        {
+          "name": "Golden Hahnii",
+          "alsoKnownAs": [
+            "Golden Bird's Nest"
+          ],
+          "group": null,
+          "description": "A variegated version of the dwarf 'Hahnii' bird's-nest rosette, with broad creamy-gold to yellow leaf margins framing the dark green centres; compact enough for a desk or windowsill.",
+          "careNote": "Variegated; propagate by division rather than leaf cuttings so the golden margins are not lost."
+        },
+        {
+          "name": "Twisted Sister",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "A shorter cultivar with a distinctive twisting, curling leaf habit and variegation of yellow-gold and green, giving a more sculptural, swirled silhouette than the straight-leaved forms.",
+          "careNote": "Variegated; propagate by division rather than leaf cuttings to keep the gold variegation."
+        },
+        {
+          "name": "Futura Superba",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "A shorter, broad-leaved form with grey-green foliage edged by a yellow margin — a more compact, stocky take on the 'Laurentii' look.",
+          "careNote": "Variegated; propagate by division rather than leaf cuttings to preserve the yellow margin."
+        }
+      ],
+      "metadata": {
+        "confidence": "high",
+        "sources": [
+          {
+            "title": "Missouri Botanical Garden — Dracaena trifasciata (Plant Finder)",
+            "url": "https://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?kempercode=b617",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "RHS — How to grow sansevierias (Growing Guide)",
+            "url": "https://www.rhs.org.uk/plants/sansevieria/growing-guide",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "RHS — Sansevieria trifasciata (mother-in-law's tongue) details",
+            "url": "https://www.rhs.org.uk/plants/16430/sansevieria-trifasciata/details",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Clemson Cooperative Extension HGIC — Houseplant Selections for Beginners",
+            "url": "https://hgic.clemson.edu/exciting-houseplant-selections-for-beginners/",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Penn State Extension — Snake Plant: A Forgiving, Low-maintenance Houseplant",
+            "url": "https://extension.psu.edu/programs/master-gardener/counties/allegheny/news/snake-plants",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "ASPCA — Toxic and Non-toxic Plants: Snake Plant",
+            "url": "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/snake-plant",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Wikipedia — Dracaena trifasciata (taxonomy, native range, CAM metabolism, toxicity)",
+            "url": "https://en.wikipedia.org/wiki/Dracaena_trifasciata",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "NC State Extension Gardener Plant Toolbox — Dracaena trifasciata (Snake Plant) cultivar list",
+            "url": "https://plants.ces.ncsu.edu/plants/dracaena-trifasciata/",
+            "accessedAt": "2026-06-19"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "slug": "epipremnum-aureum",
+    "record": {
+      "scientificName": "Epipremnum aureum",
+      "commonNamesEn": [
+        "Pothos",
+        "Golden pothos",
+        "Devil's ivy",
+        "Devil's vine",
+        "Money plant",
+        "Ceylon creeper",
+        "Ivy arum",
+        "Taro vine",
+        "Silver vine",
+        "Solomon Islands ivy",
+        "Hunter's robe"
+      ],
+      "commonNamesEs": [
+        "Potos",
+        "Poto",
+        "Potus",
+        "Hiedra del diablo",
+        "Potos dorado",
+        "Teléfono"
+      ],
+      "watering": {
+        "baseIntervalDays": 9,
+        "soilDrynessBeforeWatering": "half-dry",
+        "droughtTolerance": "high",
+        "temperatureSensitivity": "medium",
+        "lightSensitivity": "medium",
+        "humiditySensitivity": "low",
+        "reduceInDormancy": true
+      },
+      "misting": {
+        "benefit": "avoid",
+        "baseFrequencyDays": null,
+        "note": null
+      },
+      "light": {
+        "minimum": "low",
+        "ideal": "bright-indirect",
+        "maximum": "bright-indirect"
+      },
+      "temperature": {
+        "survivalMinC": 10,
+        "idealMinC": 18,
+        "idealMaxC": 30,
+        "survivalMaxC": 35
+      },
+      "humidity": {
+        "minimumPct": 40,
+        "idealPct": 60
+      },
+      "fertilizing": {
+        "activeSeasons": [
+          "spring",
+          "summer"
+        ],
+        "inSeasonFrequencyDays": 30,
+        "reduceInDormancy": true
+      },
+      "repotting": {
+        "typicalIntervalMonths": 24,
+        "signs": [
+          "Roots growing out of the drainage holes",
+          "Roots circling densely or pushing the plant up out of the pot (root-bound)",
+          "Water runs straight through and the mix dries out very fast",
+          "Noticeably slowed growth and more frequent wilting between waterings"
+        ]
+      },
+      "maintenance": {
+        "pruning": "Low-maintenance. Tip-prune in spring/summer just above a leaf node to encourage branching and a bushier plant and to keep long trailing vines tidy; cut back leggy or bare stems to rejuvenate. Remove yellowed or damaged leaves anytime. Prunings root easily in water or moist mix as new plants.",
+        "rotationDays": 30,
+        "leafCleaningDays": 30,
+        "commonPests": [
+          "Mealybugs",
+          "Spider mites",
+          "Scale",
+          "Fungus gnats",
+          "Root rot (from overwatering / poor drainage)",
+          "Fungal leaf spot / botrytis"
+        ]
+      },
+      "nativeClimate": {
+        "description": "Tropical evergreen aroid of warm, humid lowland forests in the Pacific. Most current botanical authorities (Missouri Botanical Garden, Kew/Wikipedia) treat it as native to Mo'orea in the Society Islands of French Polynesia, though some horticultural references (e.g. UF/IFAS) cite the Solomon Islands; either way it is a frost-free, humid tropical-forest plant. In the wild it is a hemiepiphytic climber that scrambles along the forest floor and ascends tree trunks, its juvenile heart-shaped leaves giving way to much larger, lobed mature leaves high in the canopy. It is now naturalized — and an aggressive invasive — across many tropical and subtropical regions worldwide (including parts of Florida, South Africa, Australia and Southeast Asia).",
+        "koppen": "Af",
+        "hardinessMinC": 10,
+        "hardinessMaxC": 35
+      },
+      "cultivars": [
+        {
+          "name": "Golden Pothos",
+          "alsoKnownAs": [
+            "Golden",
+            "Aureum",
+            "Devil's ivy (typical form)"
+          ],
+          "group": null,
+          "description": "The classic, most common form: glossy mid-green heart-shaped leaves marbled and streaked with golden-yellow. Vigorous, fast-growing trailer/climber and the most forgiving of low light.",
+          "careNote": null
+        },
+        {
+          "name": "Marble Queen",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "Heavily variegated form: green leaves streaked and splashed with creamy white, often roughly half-and-half. Slower and more compact than plain golden pothos.",
+          "careNote": "Heavily white-variegated, so it has less chlorophyll — give it bright indirect light to keep the variegation crisp and prevent reversion to green; grows more slowly."
+        },
+        {
+          "name": "Snow Queen",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "Even whiter than Marble Queen — predominantly creamy-white leaves with green speckling and streaks. Striking but the least chlorophyll of the white-variegated forms.",
+          "careNote": "Needs abundant bright indirect light to sustain its mostly-white leaves and avoid scorch; among the slowest-growing and most light-hungry cultivars."
+        },
+        {
+          "name": "Neon",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "Solid bright chartreuse / lime-green leaves with no variegation, thinner and slightly more heart-shaped. New growth is the most luminous.",
+          "careNote": "Not variegated, so it tolerates lower light, but its neon glow is brightest in good bright indirect light; in deep shade the colour dulls toward plain green."
+        },
+        {
+          "name": "Pearls and Jade",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "A University of Florida sport of Marble Queen: smaller teardrop-shaped leaves edged and speckled in white and silvery-grey over green, with variegation concentrated near the margins. Compact, slower growth.",
+          "careNote": "Smaller-leaved and white-edged; bright indirect light keeps the crisp margin variegation and supports its slower growth."
+        },
+        {
+          "name": "N'Joy",
+          "alsoKnownAs": [
+            "NJoy",
+            "N Joy"
+          ],
+          "group": null,
+          "description": "Compact cultivar with small leaves in bold, well-defined blocks of green and creamy white (less speckled, more patchy than Marble Queen). Bushier, shorter internodes.",
+          "careNote": "Strongly variegated and small-leaved; needs bright indirect light to hold colour and grows slowly."
+        },
+        {
+          "name": "Manjula",
+          "alsoKnownAs": [
+            "Happy Leaf"
+          ],
+          "group": null,
+          "description": "Patented cultivar with broad, wavy-edged leaves that don't lie flat, swirled and splashed with green, cream, white and silvery tones; each leaf is uniquely marbled.",
+          "careNote": "Heavily and palely variegated with wavy leaves; bright indirect light keeps the marbling vivid, and it grows more slowly and bushier than golden pothos."
+        },
+        {
+          "name": "Global Green",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "Green-on-green variegation: deep-green leaf margins surrounding a lighter mid-green to apple-green centre, with no white or yellow. A relatively recent, eye-catching introduction.",
+          "careNote": null
+        },
+        {
+          "name": "Jade",
+          "alsoKnownAs": [
+            "Jade Pothos"
+          ],
+          "group": null,
+          "description": "Plain, solid deep-green heart-shaped leaves with no variegation. Essentially the non-variegated reference form; vigorous and the most shade-tolerant.",
+          "careNote": "Solid green, so it is the most tolerant of low light of all the cultivars."
+        },
+        {
+          "name": "Cebu Blue",
+          "alsoKnownAs": [
+            "Blue pothos"
+          ],
+          "group": null,
+          "description": "Distinctive narrow, elongated lance-shaped leaves with a silvery blue-green metallic sheen; develops natural splits (fenestrations) as it matures and climbs. Often sold as a pothos but botanically usually treated as Epipremnum pinnatum rather than E. aureum.",
+          "careNote": "Often classified under Epipremnum pinnatum, not E. aureum; care is effectively the same as other pothos."
+        }
+      ],
+      "metadata": {
+        "confidence": "high",
+        "sources": [
+          {
+            "title": "Missouri Botanical Garden — Epipremnum aureum (Plant Finder)",
+            "url": "http://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?taxonid=276360",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Clemson Cooperative Extension HGIC — How to Grow Pothos Indoors (Epipremnum spp.)",
+            "url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Royal Horticultural Society — Epipremnum Growing Guide",
+            "url": "https://www.rhs.org.uk/plants/epipremnum/growing-guide",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "UF/IFAS Extension — Epipremnum aureum (Pothos) (EP151)",
+            "url": "https://ask.ifas.ufl.edu/publication/EP151",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "NC State Extension Gardener Plant Toolbox — Epipremnum aureum",
+            "url": "https://plants.ces.ncsu.edu/plants/epipremnum-aureum/",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "ASPCA — Golden Pothos (toxic plants)",
+            "url": "https://www.aspca.org/pet-care/aspca-poison-control/toxic-and-non-toxic-plants/golden-pothos",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Wikipedia — Epipremnum aureum (taxonomy, native range, flowering)",
+            "url": "https://en.wikipedia.org/wiki/Epipremnum_aureum",
+            "accessedAt": "2026-06-19"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "slug": "nephrolepis-biserrata",
+    "record": {
+      "scientificName": "Nephrolepis biserrata",
+      "commonNamesEn": [
+        "Giant sword fern",
+        "Macho fern",
+        "Bold sword fern",
+        "Roosevelt fern",
+        "Dallas fern",
+        "Verona fern"
+      ],
+      "commonNamesEs": [
+        "Helecho espada gigante",
+        "Helecho macho"
+      ],
+      "watering": {
+        "baseIntervalDays": 4,
+        "soilDrynessBeforeWatering": "top-inch-dry",
+        "droughtTolerance": "low",
+        "temperatureSensitivity": "medium",
+        "lightSensitivity": "medium",
+        "humiditySensitivity": "low",
+        "reduceInDormancy": true
+      },
+      "misting": {
+        "benefit": "avoid",
+        "baseFrequencyDays": null,
+        "note": "Misting does not meaningfully raise ambient humidity, and in the still indoor air this fern usually lives in, prolonged leaf wetness invites fungal spotting. In a humid climate humidity is rarely the limiting factor, so tend the root zone (water plus drainage) and light rather than reaching for a spray bottle."
+      },
+      "light": {
+        "minimum": "medium",
+        "ideal": "bright-indirect",
+        "maximum": "direct"
+      },
+      "temperature": {
+        "survivalMinC": -4,
+        "idealMinC": 18,
+        "idealMaxC": 29,
+        "survivalMaxC": 38
+      },
+      "humidity": {
+        "minimumPct": 50,
+        "idealPct": 70
+      },
+      "fertilizing": {
+        "activeSeasons": [
+          "spring",
+          "summer"
+        ],
+        "inSeasonFrequencyDays": 30,
+        "reduceInDormancy": true
+      },
+      "repotting": {
+        "typicalIntervalMonths": 18,
+        "signs": [
+          "Roots circling or pushing out of drainage holes",
+          "Dense root mass that sheds water instead of absorbing it",
+          "Rapid drying between waterings as roots fill the pot",
+          "Vigorous runners (stolons) crowding the container",
+          "Slowed growth and frequent frond yellowing despite good care"
+        ]
+      },
+      "maintenance": {
+        "pruning": "Trim off browned, yellowed, or tattered fronds at the base any time to keep the plant tidy and encourage fresh growth; this fern is a fast, vigorous grower, so cut back hard if it outgrows its space. If it has been allowed to dry out and sheds most of its fronds, it can be cut back to about 2 in (5 cm) to regenerate. Wear gloves, as old fronds and runners can be wiry. Remove spent fronds after any cold damage once the threat of further chill has passed.",
+        "rotationDays": 14,
+        "leafCleaningDays": null,
+        "commonPests": [
+          "Florida fern caterpillar",
+          "Mealybugs",
+          "Scale",
+          "Aphids",
+          "Fern mites",
+          "Spider mites"
+        ]
+      },
+      "nativeClimate": {
+        "description": "A robust tropical and subtropical fern native to the warmer Americas (including Florida), Africa, and Southeast Asia. It grows in swamps, wet hammocks, and humid forests, terrestrially or sometimes as an epiphyte, spreading by runners to form large colonies. It thrives in warm, humid, frost-free conditions with consistently moist but well-drained, organically rich soil and dappled to fairly bright light, and is markedly more sun- and heat-tolerant than the Boston fern.",
+        "koppen": "Af",
+        "hardinessMinC": -4,
+        "hardinessMaxC": 38
+      },
+      "cultivars": [
+        {
+          "name": "Macho",
+          "alsoKnownAs": [
+            "Macho fern",
+            "Giant sword fern 'Macho'"
+          ],
+          "group": null,
+          "description": "The widely sold ornamental form of the species, grown for its huge, cascading mounds of bright green, glossy, arching fronds that commonly reach 1.2 m (about 4 ft) long, dwarfing a Boston fern. Bold, coarse-textured, and very vigorous, it is a favourite for large containers and hanging baskets.",
+          "careNote": "Effectively the trade selection of the species itself, so care matches the baseline; just give it plenty of room and a large pot for its size."
+        },
+        {
+          "name": "Furcans",
+          "alsoKnownAs": [
+            "Fishtail fern",
+            "Fishtail sword fern",
+            "Forked sword fern"
+          ],
+          "group": null,
+          "description": "The 'fishtail' fern, historically associated with N. biserrata (though some references file it under N. falcata). Distinguished by leathery, yellow-green to bright-green fronds whose widely spaced, broad pinnae fork into two rounded lobes at the tips, giving a crested, fishtail look. Fronds (often up to ~90 cm) tend to be more upright and a lighter green than the plain species.",
+          "careNote": "A little more cold-sensitive than the plain species, so keep it reliably warm and never let it chill."
+        }
+      ],
+      "metadata": {
+        "confidence": "high",
+        "sources": [
+          {
+            "title": "North Carolina Extension Gardener Plant Toolbox — Nephrolepis biserrata (Macho Fern)",
+            "url": "https://plants.ces.ncsu.edu/plants/nephrolepis-biserrata/",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "UF/IFAS Plant Directory — Nephrolepis biserrata (Giant Sword Fern)",
+            "url": "https://plant-directory.ifas.ufl.edu/plant-directory/nephrolepis-biserrata/",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "Costa Farms — Macho Fern (Nephrolepis biserrata) care",
+            "url": "https://costafarms.com/blogs/plant-finder/macho-fern",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "Proven Winners — Macho Fern (Nephrolepis biserrata)",
+            "url": "https://www.provenwinners.com/plants/nephrolepis/macho-fern-nephrolepis-biserrata",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "Wikipedia — Nephrolepis biserrata (incl. Flora of North America data)",
+            "url": "https://en.wikipedia.org/wiki/Nephrolepis_biserrata",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Garden.org Plant Database — Macho Fern (Nephrolepis biserrata 'Macho')",
+            "url": "https://garden.org/plants/view/115792/Macho-Fern-Nephrolepis-biserrata-Macho/",
+            "accessedAt": "2026-06-19"
+          },
+          {
+            "title": "Glasshouse Works — Nephrolepis biserrata furcans (Fishtail Fern)",
+            "url": "https://www.glasshouseworks.com/nephrolepis-biserrata-furcans",
+            "accessedAt": "2026-06-19"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "slug": "nephrolepis-exaltata",
+    "record": {
+      "scientificName": "Nephrolepis exaltata",
+      "commonNamesEn": [
+        "Boston fern",
+        "Sword fern",
+        "Boston sword fern",
+        "Southern sword fern",
+        "Fishbone fern"
+      ],
+      "commonNamesEs": [
+        "Helecho de Boston",
+        "Helecho espada",
+        "Helecho común",
+        "Helecho rizado",
+        "Nefrolepis"
+      ],
+      "watering": {
+        "baseIntervalDays": 4,
+        "soilDrynessBeforeWatering": "keep-moist",
+        "droughtTolerance": "low",
+        "temperatureSensitivity": "medium",
+        "lightSensitivity": "medium",
+        "humiditySensitivity": "high",
+        "reduceInDormancy": true
+      },
+      "misting": {
+        "benefit": "beneficial",
+        "baseFrequencyDays": 3,
+        "note": "A humidity lover: misting freshens and cleans the fronds, but it barely raises ambient humidity, so treat it as a snack, not a meal. A pebble tray or humidifier does more. Keep water out of the dense crown to avoid rot."
+      },
+      "light": {
+        "minimum": "low",
+        "ideal": "bright-indirect",
+        "maximum": "bright-indirect"
+      },
+      "temperature": {
+        "survivalMinC": 5,
+        "idealMinC": 16,
+        "idealMaxC": 24,
+        "survivalMaxC": 35
+      },
+      "humidity": {
+        "minimumPct": 50,
+        "idealPct": 80
+      },
+      "fertilizing": {
+        "activeSeasons": [
+          "spring",
+          "summer"
+        ],
+        "inSeasonFrequencyDays": 30,
+        "reduceInDormancy": true
+      },
+      "repotting": {
+        "typicalIntervalMonths": 12,
+        "signs": [
+          "roots growing through the drainage holes",
+          "the plant dries out faster than it used to",
+          "the fern becomes crowded and pot-bound with a dense mass of roots"
+        ]
+      },
+      "maintenance": {
+        "pruning": "Snip dead or yellowed fronds off at the base to keep the plant tidy and make room for fresh growth. Old outer fronds naturally brown first.",
+        "rotationDays": 14,
+        "leafCleaningDays": null,
+        "commonPests": [
+          "spider mites",
+          "mealybugs",
+          "scale"
+        ]
+      },
+      "nativeClimate": {
+        "description": "Humid tropical and subtropical forests of the Americas (and pantropical), where it grows in dappled shade on the forest floor, in swampy ground and on tree trunks and rock as an understory fern.",
+        "koppen": "Af",
+        "hardinessMinC": 5,
+        "hardinessMaxC": 35
+      },
+      "cultivars": [
+        {
+          "name": "'Bostoniensis'",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "The original Boston fern: long, gracefully arching sword-shaped fronds that gave the plant its name. A classic parlor fern selected in the 1890s.",
+          "careNote": null
+        },
+        {
+          "name": "'Fluffy Ruffles'",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "A compact, upright cultivar with densely overlapping, finely divided (multi-pinnate) fronds that look ruffled and feathery.",
+          "careNote": null
+        },
+        {
+          "name": "'Dallas'",
+          "alsoKnownAs": [
+            "Dallas Jewel"
+          ],
+          "group": null,
+          "description": "A small, dense, fast-spreading cultivar with a compact habit, popular as a tabletop fern.",
+          "careNote": "More forgiving of lower light and drier indoor air than the species, but still wants evenly moist soil."
+        },
+        {
+          "name": "'Teddy Junior'",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "A dwarf, compact cultivar forming a neat mound under ~25 cm, with soft, slightly ruffled/crinkled fronds; suited to small pots and terrariums.",
+          "careNote": null
+        },
+        {
+          "name": "'Whitmanii'",
+          "alsoKnownAs": [
+            "Lace fern"
+          ],
+          "group": null,
+          "description": "Extremely feathery and delicate, with 2–3 times pinnate fronds giving a fine, airy, lace-like texture.",
+          "careNote": "Reputed to tolerate somewhat lower humidity than the species, but the fine foliage still crisps quickly if the root zone dries out."
+        },
+        {
+          "name": "'Compacta'",
+          "alsoKnownAs": [],
+          "group": null,
+          "description": "A shorter, more compact and upright version of 'Bostoniensis' with the same arching sword-shaped fronds on a tidier plant.",
+          "careNote": null
+        }
+      ],
+      "metadata": {
+        "confidence": "high",
+        "sources": [
+          {
+            "title": "Royal Horticultural Society — Nephrolepis exaltata",
+            "url": "https://www.rhs.org.uk/plants/118430/nephrolepis-exaltata/details",
+            "accessedAt": "2026-06-21"
+          },
+          {
+            "title": "Missouri Botanical Garden — Nephrolepis exaltata",
+            "url": "https://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?kempercode=c548",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "Wisconsin Horticulture Extension — Boston Fern, Nephrolepis exaltata var. Bostoniensis",
+            "url": "https://hort.extension.wisc.edu/articles/boston-fern-nephrolepis-exaltata-bostoniensis/",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "University of Florida Emerging Pathogens Institute — Diagnosing houseplants 101: Is your plant diseased or just overwatered?",
+            "url": "https://epi.ufl.edu/2024/07/03/diagnosing-houseplants-101-is-your-plant-diseased-or-just-overwatered/",
+            "accessedAt": "2026-07-08"
+          },
+          {
+            "title": "Michigan State University Extension — Why should greenhouse growers pay attention to vapor-pressure deficit and not relative humidity?",
+            "url": "https://www.canr.msu.edu/news/why_should_greenhouse_growers_pay_attention_to_vapor_pressure_deficit_and_n",
+            "accessedAt": "2026-07-08"
+          }
+        ]
+      }
+    }
+  }
+]
