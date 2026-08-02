@@ -110,6 +110,17 @@ function cell(text: string): string {
  * the `Description` column appears only when some field in THIS table carries one. That keeps every
  * already-generated doc byte-identical until its schema actually gains a description, so this change alone
  * cannot make a downstream `tools:check` go red.
+ *
+ * The zero-entries case (every field is `type` or `omit`ted — happens for a sub-table whose own shape is
+ * entirely omitted, or for a genuinely empty object) needs its OWN placeholder row, `['']`, instead of
+ * falling out to `[]`. The predecessor `fieldRows()` built its rows via `rows.join('\n')` and always
+ * contributed that joined STRING as one array element in the caller's `parts.push(..., fieldRows(...), '')`
+ * composition. When entries has 1+ rows, that is byte-identical to pushing the rows as separate elements
+ * (`Array.join('\n')` doesn't care whether a newline came from between elements or was embedded in one of
+ * them). But when entries is EMPTY, `[].join('\n')` is `''` — an extra blank-line element the old code
+ * always contributed, that a naive `[...header, ...rows]` with `rows = []` silently drops. Keeping `['']`
+ * here reproduces that exact quirk, so the output stays byte-identical for every description-free schema,
+ * not only the ones with at least one field — see the plan's Task 7 promise and the regression test below.
  */
 function fieldTable(schema: z.ZodTypeAny, omit: readonly string[] = []): string[] {
   const shape = objectShape(schema);
@@ -118,11 +129,13 @@ function fieldTable(schema: z.ZodTypeAny, omit: readonly string[] = []): string[
   const header = described
     ? ['| Field | Type | Required | Description |', '|---|---|---|---|']
     : ['| Field | Type | Required |', '|---|---|---|'];
-  const rows = entries.map(([key, field]) => {
-    const { optional } = unwrap(field);
-    const base = `| \`${key}\` | ${describeType(field)} | ${optional ? 'optional' : 'required'} |`;
-    return described ? `${base} ${cell(fieldDescription(field))} |` : base;
-  });
+  const rows = entries.length === 0
+    ? ['']
+    : entries.map(([key, field]) => {
+        const { optional } = unwrap(field);
+        const base = `| \`${key}\` | ${describeType(field)} | ${optional ? 'optional' : 'required'} |`;
+        return described ? `${base} ${cell(fieldDescription(field))} |` : base;
+      });
   return [...header, ...rows];
 }
 

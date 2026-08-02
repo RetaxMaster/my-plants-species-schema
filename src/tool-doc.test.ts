@@ -243,4 +243,46 @@ describe('tool-doc renders field descriptions (Spec 3 §5)', () => {
     expect(out).toContain('string \\| object');
     expect(out).not.toContain('| union |');
   });
+
+  // Codex code review on Task 7 found that "byte-identical for a description-free schema" (the promise in
+  // the plan) was violated for the ZERO-ENTRIES case: a sub-table whose own object has no renderable fields
+  // (every key is `type` or `omit`ted, or the object is genuinely empty) used to get an extra blank-line
+  // placeholder from the old `fieldRows()` (`[].join('\n') === ''`, pushed as one more array element before
+  // the composition's own trailing `''`). A naive `[...header, ...rows]` with `rows = []` silently drops
+  // that placeholder, so the new doc has ONE FEWER blank line than the old one for this exact shape — the
+  // "no Description column" check above does not (and cannot) catch a missing blank LINE. This test does a
+  // full, exact string comparison (not `.toContain`) so a reintroduction of the dropped-placeholder bug
+  // fails it.
+  it('is byte-identical (including blank-line count) for a sub-table with zero renderable fields', () => {
+    const withEmptySub = z.object({
+      type: z.literal('t'),
+      meta: z.object({}).strict(),
+    }).strict();
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema: withEmptySub, example: { type: 't', meta: {} } }],
+      invariants: noInvariants,
+    });
+    const expected = [
+      '# T',
+      '',
+      '### `t`',
+      '',
+      '| Field | Type | Required |',
+      '|---|---|---|',
+      '| `meta` | object | required |',
+      '',
+      '#### `meta`',
+      '',
+      '| Field | Type | Required |',
+      '|---|---|---|',
+      '',
+      '',
+      '```json',
+      JSON.stringify({ type: 't', meta: {} }, null, 2),
+      '```',
+      '',
+    ].join('\n');
+    expect(out).toBe(expected);
+  });
 });
