@@ -24,11 +24,24 @@ export const plantProfileSchema = z.object({
   windowDistance: windowDistanceEnum.nullable(),
   growLight: z.boolean().nullable(),
   potType: potTypeEnum.nullable(),
-  potSizeCm: z.number().int().positive().nullable(),
+  potSizeCm: z
+    .number()
+    .int()
+    .positive()
+    .describe(
+      'Pot RIM DIAMETER in centimetres — rim-to-rim across the top, never the radius and never the ' +
+        'height. The engine’s crowding index is height ÷ this diameter.',
+    )
+    .nullable(),
   hasDrainage: z.boolean().nullable(),
   soilMix: soilMixEnum.nullable(),
   growthHabit: growthHabitEnum.nullable(),
-  ageMonths: z.number().int().nonnegative().nullable(),
+  ageMonths: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe('The plant’s AGE in months (not its height, and not how long it has been tracked).')
+    .nullable(),
   nearHeater: z.boolean().nullable(),
 });
 export type PlantProfile = z.infer<typeof plantProfileSchema>;

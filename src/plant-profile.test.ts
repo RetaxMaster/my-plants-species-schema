@@ -91,3 +91,17 @@ describe('enum ↔ array drift guard', () => {
     expect([...growthHabitEnum.options]).toEqual([...GROWTH_HABITS]);
   });
 });
+
+describe('measurement semantics (Spec 3 §5)', () => {
+  it('potSizeCm says RIM DIAMETER, and says what it is not', () => {
+    const d = plantProfileSchema.shape.potSizeCm._def.innerType._def.description as string;
+    expect(d).toContain('RIM DIAMETER');
+    expect(d).toContain('never the radius');
+    expect(d).toContain('never the height');
+  });
+
+  it('ageMonths states its unit', () => {
+    const d = plantProfileSchema.shape.ageMonths._def.innerType._def.description as string;
+    expect(d).toContain('months');
+  });
+});

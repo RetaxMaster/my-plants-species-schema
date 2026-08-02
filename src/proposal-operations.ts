@@ -20,6 +20,27 @@ const progressTag = z.enum(PROGRESS_TAG_KEYS);
 // it. `plantId` is always IDENTITY, never a write field — see IDENTITY_KEYS_BY_TYPE and writeSet below.
 const plantTarget = z.string().min(1).optional();
 
+/**
+ * ONE description, used by BOTH progress operations (D44). Two copies of this sentence is the fork rule's
+ * textbook case: the incident this text exists to prevent — the whole-garden agent recording a seedling's
+ * height in free-text `observations`, where the engine cannot read it, so the plant produced no crowding
+ * signal and was scheduled to repot in 538 days — was a DOCUMENTATION defect, not a capability one. The
+ * second sentence is the load-bearing one: it names the consequence, not just the meaning.
+ */
+const SIZE_CM_DESCRIPTION =
+  'The plant’s HEIGHT in centimetres at the time of this entry. This is the ONLY height the care engine ' +
+  'reads — a height written into `observations` is invisible to it and will not affect any schedule. ' +
+  'Record it here whenever you know it.';
+
+const sizeCm = z
+  .number()
+  .int()
+  .positive()
+  .max(MAX_SIZE_CM)
+  .describe(SIZE_CM_DESCRIPTION)
+  .nullable()
+  .optional();
+
 const profileUpdate = plantProfileUpdateSchema.extend({ type: z.literal('profile.update'), plantId: plantTarget }).strict();
 const plantUpdate = z.object({
   type: z.literal('plant.update'),
@@ -33,7 +54,7 @@ const progressCreate = z.object({
   health,
   occurredOn: ymd.optional(),
   observations: z.string().max(2000).nullable().optional(),
-  sizeCm: z.number().int().positive().max(MAX_SIZE_CM).nullable().optional(),
+  sizeCm,
   tags: z.array(progressTag).max(PROGRESS_TAG_KEYS.length).optional(),
 }).strict();
 const progressUpdate = z.object({
@@ -43,11 +64,24 @@ const progressUpdate = z.object({
   health: health.optional(),
   occurredOn: ymd.optional(),
   observations: z.string().max(2000).nullable().optional(),
-  sizeCm: z.number().int().positive().max(MAX_SIZE_CM).nullable().optional(),
+  sizeCm,
   tags: z.array(progressTag).max(PROGRESS_TAG_KEYS.length).optional(),
 }).strict();
 const progressDelete = z.object({ type: z.literal('progress.delete'), entryId: z.string().min(1) }).strict();
-const frequencySet = z.object({ type: z.literal('frequency.set'), plantId: plantTarget, task, intervalDays: z.number().int().min(1).max(3650) }).strict();
+const frequencySet = z.object({
+  type: z.literal('frequency.set'),
+  plantId: plantTarget,
+  task,
+  intervalDays: z
+    .number()
+    .int()
+    .min(1)
+    .max(3650)
+    .describe(
+      'The number of DAYS between consecutive occurrences of this task — a cadence, never a date. ' +
+        'Setting it overrides the engine’s computed interval for this plant until `frequency.clear`.',
+    ),
+}).strict();
 const frequencyClear = z.object({ type: z.literal('frequency.clear'), plantId: plantTarget, task }).strict();
 const careDone = z.object({ type: z.literal('care.done'), plantId: plantTarget, task, occurredOn: ymd }).strict();
 
