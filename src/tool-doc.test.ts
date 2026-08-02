@@ -172,3 +172,117 @@ describe('renderToolDoc field omission (spec §4.3)', () => {
     expect(md).not.toContain('indoor');
   });
 });
+
+describe('tool-doc renders field descriptions (Spec 3 §5)', () => {
+  const noInvariants = { schemaAttached: {}, external: [] };
+
+  it('is BYTE-IDENTICAL when no field carries a description', () => {
+    const schema = z.object({ type: z.literal('t'), a: z.string(), b: z.number().int() });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x', b: 1 } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('| Field | Type | Required |');
+    expect(out).not.toContain('Description');
+  });
+
+  it('adds a Description column when at least one field carries one', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.string(),
+      b: z.number().int().describe('The plant HEIGHT in centimetres.'),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x', b: 1 } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('| Field | Type | Required | Description |');
+    expect(out).toContain('| `b` | integer | required | The plant HEIGHT in centimetres. |');
+    // A field with no description still renders, with an empty cell — never a missing column.
+    expect(out).toContain('| `a` | string | required |  |');
+  });
+
+  it('finds a description attached BEFORE .nullable()/.optional()/.default()', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.number().int().describe('Pot RIM DIAMETER in cm.').nullable().optional(),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't' } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('Pot RIM DIAMETER in cm.');
+  });
+
+  it('flattens newlines and escapes pipes so a description cannot break the table', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.string().describe('one | two\nthree'),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x' } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('one \\| two three');
+  });
+
+  it('describes a UNION as its member types rather than the bare word "union"', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.union([z.string(), z.object({ en: z.string(), es: z.string() })]),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x' } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('string \\| object');
+    expect(out).not.toContain('| union |');
+  });
+
+  // Codex code review on Task 7 found that "byte-identical for a description-free schema" (the promise in
+  // the plan) was violated for the ZERO-ENTRIES case: a sub-table whose own object has no renderable fields
+  // (every key is `type` or `omit`ted, or the object is genuinely empty) used to get an extra blank-line
+  // placeholder from the old `fieldRows()` (`[].join('\n') === ''`, pushed as one more array element before
+  // the composition's own trailing `''`). A naive `[...header, ...rows]` with `rows = []` silently drops
+  // that placeholder, so the new doc has ONE FEWER blank line than the old one for this exact shape — the
+  // "no Description column" check above does not (and cannot) catch a missing blank LINE. This test does a
+  // full, exact string comparison (not `.toContain`) so a reintroduction of the dropped-placeholder bug
+  // fails it.
+  it('is byte-identical (including blank-line count) for a sub-table with zero renderable fields', () => {
+    const withEmptySub = z.object({
+      type: z.literal('t'),
+      meta: z.object({}).strict(),
+    }).strict();
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema: withEmptySub, example: { type: 't', meta: {} } }],
+      invariants: noInvariants,
+    });
+    const expected = [
+      '# T',
+      '',
+      '### `t`',
+      '',
+      '| Field | Type | Required |',
+      '|---|---|---|',
+      '| `meta` | object | required |',
+      '',
+      '#### `meta`',
+      '',
+      '| Field | Type | Required |',
+      '|---|---|---|',
+      '',
+      '',
+      '```json',
+      JSON.stringify({ type: 't', meta: {} }, null, 2),
+      '```',
+      '',
+    ].join('\n');
+    expect(out).toBe(expected);
+  });
+});
