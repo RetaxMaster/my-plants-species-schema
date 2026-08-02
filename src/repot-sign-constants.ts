@@ -60,10 +60,13 @@ export const repotSignIdSchema = z
   }, 'a repot sign id must be "<species-slug|universal>--<semantic-slug>"');
 
 /**
- * Compose the stored id. THROWS rather than composing something invalid: an id is the permanent referent of
- * every past observation, so a malformed one must never reach the database.
+ * Compose and validate the stored id from an already-decided namespace. THROWS rather than composing
+ * something invalid: an id is the permanent referent of every past observation, so a malformed one must
+ * never reach the database. Private: callers go through `composeUniversalRepotSignId` or
+ * `composeSpeciesRepotSignId` below, which decide the namespace and — for the species path — guard against
+ * the reserved value, so no caller can slip an arbitrary namespace through unchecked.
  */
-export function composeRepotSignId(namespace: string, semanticSlug: string): string {
+function composeAndValidateRepotSignId(namespace: string, semanticSlug: string): string {
   const semantic = repotSignSemanticSlugSchema.safeParse(semanticSlug);
   if (!semantic.success) {
     throw new Error(`invalid semantic slug "${semanticSlug}": ${semantic.error.issues[0]?.message}`);
@@ -76,4 +79,29 @@ export function composeRepotSignId(namespace: string, semanticSlug: string): str
     );
   }
   return id;
+}
+
+/**
+ * Compose the id for an app-seeded, species-agnostic sign. Takes NO namespace argument — it always
+ * composes under `UNIVERSAL_SIGN_NAMESPACE` internally, so this path can never produce anything other than
+ * a genuine universal id, and no caller can (accidentally or otherwise) redirect it to a different
+ * namespace.
+ */
+export function composeUniversalRepotSignId(semanticSlug: string): string {
+  return composeAndValidateRepotSignId(UNIVERSAL_SIGN_NAMESPACE, semanticSlug);
+}
+
+/**
+ * Compose the id for a species-authored sign. THROWS when `speciesSlug` equals
+ * `UNIVERSAL_SIGN_NAMESPACE` — that value could never legitimately be a real species slug, so refusing it
+ * here makes it structurally impossible for a species-authored id to collide bit-for-bit with a universal
+ * (app-seeded) one, no matter what slug a species happens to have.
+ */
+export function composeSpeciesRepotSignId(speciesSlug: string, semanticSlug: string): string {
+  if (speciesSlug === UNIVERSAL_SIGN_NAMESPACE) {
+    throw new Error(
+      `species slug "${speciesSlug}" is reserved for the universal namespace and cannot be used to compose a species-authored repot sign id`,
+    );
+  }
+  return composeAndValidateRepotSignId(speciesSlug, semanticSlug);
 }

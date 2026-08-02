@@ -6,7 +6,8 @@ import {
   REPOT_SIGN_SEMANTIC_SLUG_MAX_LEN,
   SPECIES_SLUG_MAX_LEN,
   UNIVERSAL_SIGN_NAMESPACE,
-  composeRepotSignId,
+  composeSpeciesRepotSignId,
+  composeUniversalRepotSignId,
   repotSignIdSchema,
   repotSignSemanticSlugSchema,
 } from './repot-sign-constants.js';
@@ -44,31 +45,38 @@ describe('repotSignSemanticSlugSchema', () => {
   });
 });
 
-describe('composeRepotSignId', () => {
+describe('composeSpeciesRepotSignId / composeUniversalRepotSignId', () => {
   it('namespaces a species row', () => {
-    expect(composeRepotSignId('spider-plant', 'crowded-clump')).toBe('spider-plant--crowded-clump');
+    expect(composeSpeciesRepotSignId('spider-plant', 'crowded-clump')).toBe('spider-plant--crowded-clump');
   });
   it('namespaces a universal row', () => {
-    expect(composeRepotSignId(UNIVERSAL_SIGN_NAMESPACE, 'water-runs-through')).toBe(
-      'universal--water-runs-through',
-    );
+    expect(composeUniversalRepotSignId('water-runs-through')).toBe('universal--water-runs-through');
   });
   it('a species row echoing a universal slug does NOT collide with the universal row', () => {
-    expect(composeRepotSignId('spider-plant', 'water-runs-through')).not.toBe(
-      composeRepotSignId(UNIVERSAL_SIGN_NAMESPACE, 'water-runs-through'),
+    expect(composeSpeciesRepotSignId('spider-plant', 'water-runs-through')).not.toBe(
+      composeUniversalRepotSignId('water-runs-through'),
     );
   });
   it('two species proposing the SAME semantic slug produce two distinct ids', () => {
-    expect(composeRepotSignId('spider-plant', 'crowded-clump')).not.toBe(
-      composeRepotSignId('monstera-deliciosa', 'crowded-clump'),
+    expect(composeSpeciesRepotSignId('spider-plant', 'crowded-clump')).not.toBe(
+      composeSpeciesRepotSignId('monstera-deliciosa', 'crowded-clump'),
     );
   });
   it('throws on an invalid semantic slug rather than composing a bad id', () => {
-    expect(() => composeRepotSignId('spider-plant', 'crowded--clump')).toThrow(/semantic slug/i);
+    expect(() => composeSpeciesRepotSignId('spider-plant', 'crowded--clump')).toThrow(/semantic slug/i);
   });
   it('throws when the composed id would exceed the derived ceiling', () => {
     const longSpecies = 'a'.repeat(SPECIES_SLUG_MAX_LEN + 1);
-    expect(() => composeRepotSignId(longSpecies, 'x')).toThrow(/257/);
+    expect(() => composeSpeciesRepotSignId(longSpecies, 'x')).toThrow(/257/);
+  });
+  it(`throws when a species slug is literally "${UNIVERSAL_SIGN_NAMESPACE}" instead of silently colliding with the universal namespace`, () => {
+    expect(() => composeSpeciesRepotSignId(UNIVERSAL_SIGN_NAMESPACE, 'crowded-clump')).toThrow(
+      /reserved for the universal namespace/i,
+    );
+    // Proof it would otherwise have collided bit-for-bit with the real universal id:
+    expect(`${UNIVERSAL_SIGN_NAMESPACE}${REPOT_SIGN_ID_SEPARATOR}crowded-clump`).toBe(
+      composeUniversalRepotSignId('crowded-clump'),
+    );
   });
 });
 
