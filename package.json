@@ -42,6 +42,10 @@
       "types": "./dist/repot-sign-constants.d.ts",
       "import": "./dist/repot-sign-constants.js"
     },
+    "./repot-sign": {
+      "types": "./dist/repot-sign.d.ts",
+      "import": "./dist/repot-sign.js"
+    },
     "./tool-doc": {
       "types": "./dist/tool-doc.d.ts",
       "import": "./dist/tool-doc.js"
