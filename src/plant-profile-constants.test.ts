@@ -32,10 +32,11 @@ describe('plant-profile vocabularies', () => {
     ]);
   });
 
-  it('lists the soil mixes with a trailing "other"', () => {
+  it('lists the soil mixes with all-purpose-perlite before the trailing "other"', () => {
     expect(SOIL_MIXES).toEqual([
       'aroid',
       'all-purpose',
+      'all-purpose-perlite',
       'cactus-succulent',
       'orchid-bark',
       'peat-based',
@@ -43,6 +44,8 @@ describe('plant-profile vocabularies', () => {
       'semi-hydro',
       'other',
     ]);
+    // `other` is documented as trailing — a new mix must never land after it.
+    expect(SOIL_MIXES[SOIL_MIXES.length - 1]).toBe('other');
   });
 
   it('lists the growth habits with a trailing "other"', () => {

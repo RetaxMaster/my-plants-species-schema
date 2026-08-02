@@ -30,10 +30,13 @@ export const POT_TYPES = [
 ] as const;
 export type PotType = (typeof POT_TYPES)[number];
 
-// Substrate type.
+// Substrate type. The array is ORDERED and `other` is documented as trailing: a new mix is inserted
+// before it, never after. The Zod enum in `plant-profile.ts` DERIVES from this array — never re-declare
+// the vocabulary there.
 export const SOIL_MIXES = [
   'aroid',
   'all-purpose',
+  'all-purpose-perlite',
   'cactus-succulent',
   'orchid-bark',
   'peat-based',
