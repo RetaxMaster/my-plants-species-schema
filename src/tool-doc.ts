@@ -139,8 +139,17 @@ function fieldTable(schema: z.ZodTypeAny, omit: readonly string[] = []): string[
   return [...header, ...rows];
 }
 
-/** One-level sub-tables: for each object-typed field of `schema`, render its own field table. Does not
- * recurse past one level (a nested object's nested objects render only as `object`), which is enough to
+/** True when `inner` (already unwrapped) is directly a ZodObject, or a ZodEffects wrapping one. */
+function isObjectNode(inner: z.ZodTypeAny): boolean {
+  return (
+    inner._def.typeName === 'ZodObject' ||
+    (inner._def.typeName === 'ZodEffects' && inner._def.schema?._def?.typeName === 'ZodObject')
+  );
+}
+
+/** One-level sub-tables: for each object-typed field of `schema` — or each ARRAY-of-object field, in which
+ * case the sub-table documents the ELEMENT shape, not the array itself — render its own field table. Does
+ * not recurse past one level (a nested object's nested objects render only as `object`), which is enough to
  * surface a section's enum vocabularies and numeric bounds without unbounded expansion. */
 function subTables(schema: z.ZodTypeAny, omit: readonly string[] = []): string[] {
   const shape = objectShape(schema);
@@ -148,13 +157,16 @@ function subTables(schema: z.ZodTypeAny, omit: readonly string[] = []): string[]
   for (const [key, field] of Object.entries(shape)) {
     if (key === 'type' || omit.includes(key)) continue;
     const { inner } = unwrap(field);
-    const isObject =
-      inner._def.typeName === 'ZodObject' ||
-      (inner._def.typeName === 'ZodEffects' && inner._def.schema?._def?.typeName === 'ZodObject');
-    if (isObject) {
+    if (isObjectNode(inner)) {
       // No `omit` passed here: the omit set is top-level-only, and an omitted object field's sub-table
       // is already skipped by the loop guard above before this line is ever reached.
       out.push(`#### \`${key}\``, '', ...fieldTable(field), '');
+    } else if (inner._def.typeName === 'ZodArray') {
+      const { inner: elementInner } = unwrap(inner._def.type as z.ZodTypeAny);
+      if (isObjectNode(elementInner)) {
+        // Document the ARRAY ELEMENT's shape (the object type inside the array), not the array wrapper.
+        out.push(`#### \`${key}\``, '', ...fieldTable(inner._def.type as z.ZodTypeAny), '');
+      }
     }
   }
   return out;
