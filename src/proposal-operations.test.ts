@@ -508,3 +508,59 @@ describe('measurement semantics on the proposal operations (Spec 3 §5, D44)', (
     expect(d).toContain('DAYS');
   });
 });
+
+describe('care.done — the REPOT variant closes the silent-rot gap', () => {
+  const repotDone = {
+    type: 'care.done' as const,
+    task: 'REPOT' as const,
+    occurredOn: '2026-08-01',
+    potSizeCm: 18,
+    // 'potting-soil' is not a member of SOIL_MIXES (src/plant-profile-constants.ts) in this codebase —
+    // 'aroid' is a real value, matching the convention already used for substrate.refresh tests below.
+    soilMix: 'aroid',
+    charged: true,
+  };
+
+  it('accepts a REPOT completion carrying all three fields', () => {
+    expect(operationSchema.safeParse(repotDone).success).toBe(true);
+  });
+
+  it('accepts an optional refreshedOn beside them', () => {
+    expect(operationSchema.safeParse({ ...repotDone, refreshedOn: '2026-08-01' }).success).toBe(true);
+  });
+
+  it.each(['potSizeCm', 'soilMix', 'charged'] as const)(
+    'REJECTS a REPOT completion missing %s — before it ever reaches the applier',
+    (missing) => {
+      const { [missing]: _dropped, ...without } = repotDone;
+      const parsed = operationSchema.safeParse(without);
+      expect(parsed.success).toBe(false);
+      if (!parsed.success) {
+        expect(JSON.stringify(parsed.error.issues)).toContain(missing);
+      }
+    },
+  );
+
+  it('leaves every NON-REPOT care.done byte-unchanged — no new required field', () => {
+    expect(operationSchema.safeParse({ type: 'care.done', task: 'WATER', occurredOn: '2026-08-01' }).success).toBe(true);
+    expect(operationSchema.safeParse({ type: 'care.done', task: 'FERTILIZE', occurredOn: '2026-08-01' }).success).toBe(true);
+  });
+
+  it('rejects the three completion fields on a NON-REPOT care.done (they would be meaningless)', () => {
+    expect(operationSchema.safeParse({ ...repotDone, task: 'WATER' }).success).toBe(false);
+  });
+
+  it('keeps the plantId asymmetry: still optional in the schema, still governed by the capability map', () => {
+    expect(operationSchema.safeParse({ ...repotDone, plantId: 'plant_1' }).success).toBe(true);
+  });
+
+  it('rejects a non-positive or non-integer potSizeCm', () => {
+    for (const bad of [0, -5, 12.5]) {
+      expect(operationSchema.safeParse({ ...repotDone, potSizeCm: bad }).success, String(bad)).toBe(false);
+    }
+  });
+
+  it('rejects an unknown soilMix', () => {
+    expect(operationSchema.safeParse({ ...repotDone, soilMix: 'magic-dust' }).success).toBe(false);
+  });
+});
