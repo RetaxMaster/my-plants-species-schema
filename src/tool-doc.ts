@@ -65,6 +65,11 @@ export function describeType(schema: z.ZodTypeAny): string {
   }
   else if (t === 'ZodBoolean') label = 'boolean';
   else if (t === 'ZodArray') label = `array of ${describeType(inner._def.type)}`;
+  else if (t === 'ZodUnion') {
+    // A union renders as its members, not as the bare word "union". The bilingual free-text fields are
+    // unions (legacy string | { en, es }), and "union" in a tool doc teaches an agent nothing.
+    label = (inner._def.options as z.ZodTypeAny[]).map((o) => describeType(o)).join(' \\| ');
+  }
   else label = t.replace(/^Zod/, '').toLowerCase();
   return nullable ? `${label} \\| null` : label;
 }
@@ -77,15 +82,48 @@ function objectShape(schema: z.ZodTypeAny): z.ZodRawShape {
   throw new Error(`tool-doc: cannot introspect a non-object tool schema (${inner._def.typeName}).`);
 }
 
-function fieldRows(schema: z.ZodTypeAny, omit: readonly string[] = []): string {
-  const shape = objectShape(schema);
-  const rows: string[] = [];
-  for (const [key, field] of Object.entries(shape)) {
-    if (key === 'type' || omit.includes(key)) continue;
-    const { optional } = unwrap(field);
-    rows.push(`| \`${key}\` | ${describeType(field)} | ${optional ? 'optional' : 'required'} |`);
+/**
+ * A field's `.describe()` text, found through the wrapper chain. `.describe()` sets `_def.description` on
+ * whatever node it was called on, so `z.number().describe('…').nullable()` parks it on the INNER node —
+ * peel exactly the same wrappers `unwrap` does, plus ZodEffects, or half the descriptions render blank.
+ */
+function fieldDescription(schema: z.ZodTypeAny): string {
+  let s: z.ZodTypeAny = schema;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const d = s._def.description;
+    if (typeof d === 'string' && d.length > 0) return d;
+    const t = s._def.typeName;
+    if (t === 'ZodOptional' || t === 'ZodNullable' || t === 'ZodDefault') s = s._def.innerType;
+    else if (t === 'ZodEffects') s = s._def.schema;
+    else return '';
   }
-  return rows.join('\n');
+}
+
+/** A description is one Markdown table CELL: no newlines, and every pipe escaped. */
+function cell(text: string): string {
+  return text.replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|').trim();
+}
+
+/**
+ * The whole field table — header, separator and rows — because the header's SHAPE now depends on the rows:
+ * the `Description` column appears only when some field in THIS table carries one. That keeps every
+ * already-generated doc byte-identical until its schema actually gains a description, so this change alone
+ * cannot make a downstream `tools:check` go red.
+ */
+function fieldTable(schema: z.ZodTypeAny, omit: readonly string[] = []): string[] {
+  const shape = objectShape(schema);
+  const entries = Object.entries(shape).filter(([key]) => key !== 'type' && !omit.includes(key));
+  const described = entries.some(([, field]) => fieldDescription(field) !== '');
+  const header = described
+    ? ['| Field | Type | Required | Description |', '|---|---|---|---|']
+    : ['| Field | Type | Required |', '|---|---|---|'];
+  const rows = entries.map(([key, field]) => {
+    const { optional } = unwrap(field);
+    const base = `| \`${key}\` | ${describeType(field)} | ${optional ? 'optional' : 'required'} |`;
+    return described ? `${base} ${cell(fieldDescription(field))} |` : base;
+  });
+  return [...header, ...rows];
 }
 
 /** One-level sub-tables: for each object-typed field of `schema`, render its own field table. Does not
@@ -103,7 +141,7 @@ function subTables(schema: z.ZodTypeAny, omit: readonly string[] = []): string[]
     if (isObject) {
       // No `omit` passed here: the omit set is top-level-only, and an omitted object field's sub-table
       // is already skipped by the loop guard above before this line is ever reached.
-      out.push(`#### \`${key}\``, '', '| Field | Type | Required |', '|---|---|---|', fieldRows(field), '');
+      out.push(`#### \`${key}\``, '', ...fieldTable(field), '');
     }
   }
   return out;
@@ -128,7 +166,7 @@ export function renderToolDoc(input: RenderInput): string {
     }
     parts.push(`### \`${tool.name}\``, '');
     if (tool.description) parts.push(tool.description, '');
-    parts.push('| Field | Type | Required |', '|---|---|---|', fieldRows(tool.schema, tool.omitFields), '');
+    parts.push(...fieldTable(tool.schema, tool.omitFields), '');
     parts.push(...subTables(tool.schema, tool.omitFields));
     parts.push('```json', JSON.stringify(exampleForDoc(tool.example, tool.omitFields), null, 2), '```', '');
   }

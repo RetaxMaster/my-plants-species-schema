@@ -172,3 +172,75 @@ describe('renderToolDoc field omission (spec §4.3)', () => {
     expect(md).not.toContain('indoor');
   });
 });
+
+describe('tool-doc renders field descriptions (Spec 3 §5)', () => {
+  const noInvariants = { schemaAttached: {}, external: [] };
+
+  it('is BYTE-IDENTICAL when no field carries a description', () => {
+    const schema = z.object({ type: z.literal('t'), a: z.string(), b: z.number().int() });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x', b: 1 } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('| Field | Type | Required |');
+    expect(out).not.toContain('Description');
+  });
+
+  it('adds a Description column when at least one field carries one', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.string(),
+      b: z.number().int().describe('The plant HEIGHT in centimetres.'),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x', b: 1 } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('| Field | Type | Required | Description |');
+    expect(out).toContain('| `b` | integer | required | The plant HEIGHT in centimetres. |');
+    // A field with no description still renders, with an empty cell — never a missing column.
+    expect(out).toContain('| `a` | string | required |  |');
+  });
+
+  it('finds a description attached BEFORE .nullable()/.optional()/.default()', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.number().int().describe('Pot RIM DIAMETER in cm.').nullable().optional(),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't' } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('Pot RIM DIAMETER in cm.');
+  });
+
+  it('flattens newlines and escapes pipes so a description cannot break the table', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.string().describe('one | two\nthree'),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x' } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('one \\| two three');
+  });
+
+  it('describes a UNION as its member types rather than the bare word "union"', () => {
+    const schema = z.object({
+      type: z.literal('t'),
+      a: z.union([z.string(), z.object({ en: z.string(), es: z.string() })]),
+    });
+    const out = renderToolDoc({
+      title: 'T',
+      tools: [{ name: 't', schema, example: { type: 't', a: 'x' } }],
+      invariants: noInvariants,
+    });
+    expect(out).toContain('string \\| object');
+    expect(out).not.toContain('| union |');
+  });
+});
