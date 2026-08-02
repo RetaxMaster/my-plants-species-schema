@@ -145,3 +145,39 @@ describe('speciesRecordSchema growthHabit (spec §2.2)', () => {
     expect(() => parseSpeciesRecord({ ...validRecord, growthHabit: 'vine' })).toThrow();
   });
 });
+
+describe('juvenile figures (Spec 2 §6.1)', () => {
+  it('defaults both juvenile fields to null on a record that predates them', () => {
+    const parsed = parseSpeciesRecord(validRecord);
+    expect(parsed.juvenilePeriodMonths).toBeNull();
+    expect(parsed.juvenileRepotIntervalMonths).toBeNull();
+  });
+
+  it('accepts positive integer months for both', () => {
+    const parsed = parseSpeciesRecord({
+      ...validRecord,
+      juvenilePeriodMonths: 12,
+      juvenileRepotIntervalMonths: 3,
+    });
+    expect(parsed.juvenilePeriodMonths).toBe(12);
+    expect(parsed.juvenileRepotIntervalMonths).toBe(3);
+  });
+
+  it('rejects zero, negative and fractional months on both fields', () => {
+    for (const key of ['juvenilePeriodMonths', 'juvenileRepotIntervalMonths'] as const) {
+      for (const bad of [0, -1, 2.5]) {
+        expect(safeParseSpeciesRecord({ ...validRecord, [key]: bad }).success).toBe(false);
+      }
+    }
+  });
+
+  it('accepts an explicit null on both fields', () => {
+    const parsed = parseSpeciesRecord({
+      ...validRecord,
+      juvenilePeriodMonths: null,
+      juvenileRepotIntervalMonths: null,
+    });
+    expect(parsed.juvenilePeriodMonths).toBeNull();
+    expect(parsed.juvenileRepotIntervalMonths).toBeNull();
+  });
+});
