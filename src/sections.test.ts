@@ -112,7 +112,7 @@ describe('fertilizing / repotting / maintenance', () => {
       rotationDays: 14,
       leafCleaningDays: null,
     });
-    expect(maintenance.commonPests).toEqual([]);
+    expect(maintenance.commonPests).toEqual({ en: [], es: null });
   });
 
   it('allows null maintenance cadences', () => {
@@ -199,5 +199,74 @@ describe('cultivarSchema', () => {
     expect(() =>
       cultivarSchema.parse({ name: '', group: null, description: 'x', careNote: null }),
     ).toThrow();
+  });
+});
+
+describe('the bilingual free-text fields (Spec 3 §4.1)', () => {
+  it('maintenance accepts a LEGACY record and normalizes pruning + commonPests', () => {
+    const out = maintenanceSchema.parse({
+      pruning: 'Trim spent fronds at the base.',
+      rotationDays: 30,
+      leafCleaningDays: 45,
+      commonPests: ['Spider mites', 'Mealybugs'],
+    });
+    expect(out.pruning).toEqual({ en: 'Trim spent fronds at the base.', es: null });
+    expect(out.commonPests).toEqual({ en: ['Spider mites', 'Mealybugs'], es: null });
+  });
+
+  it('maintenance accepts a CURATED bilingual record', () => {
+    const out = maintenanceSchema.parse({
+      pruning: { en: 'Trim spent fronds.', es: 'Recorta las frondas secas.' },
+      rotationDays: null,
+      leafCleaningDays: null,
+      commonPests: { en: ['Spider mites'], es: ['Ácaros'] },
+    });
+    expect(out.pruning.es).toBe('Recorta las frondas secas.');
+    expect(out.commonPests.es).toEqual(['Ácaros']);
+  });
+
+  it('maintenance still defaults commonPests to the legacy empty list', () => {
+    const out = maintenanceSchema.parse({ pruning: 'Trim.', rotationDays: null, leafCleaningDays: null });
+    expect(out.commonPests).toEqual({ en: [], es: null });
+  });
+
+  it('nativeClimate localizes description and KEEPS its hardiness refinement', () => {
+    const out = nativeClimateSchema.parse({
+      description: { en: 'Humid tropical understorey.', es: 'Sotobosque tropical húmedo.' },
+      hardinessMinC: 10,
+      hardinessMaxC: 32,
+    });
+    expect(out.description.es).toBe('Sotobosque tropical húmedo.');
+    expect(
+      nativeClimateSchema.safeParse({ description: 'x', hardinessMinC: 40, hardinessMaxC: 10 }).success,
+    ).toBe(false);
+  });
+
+  it('misting localizes its nullable note and KEEPS its benefit/frequency refinement', () => {
+    const out = mistingSchema.parse({ benefit: 'beneficial', baseFrequencyDays: 3, note: 'Mist at dawn.' });
+    expect(out.note).toEqual({ en: 'Mist at dawn.', es: null });
+    expect(mistingSchema.parse({ benefit: 'avoid', baseFrequencyDays: null, note: null }).note).toBeNull();
+    expect(
+      mistingSchema.safeParse({ benefit: 'avoid', baseFrequencyDays: 5, note: null }).success,
+    ).toBe(false);
+  });
+
+  it('cultivar localizes description and the nullable careNote', () => {
+    const out = cultivarSchema.parse({
+      name: "Massangeana",
+      alsoKnownAs: [],
+      group: null,
+      description: { en: 'Broad yellow midrib stripe.', es: 'Franja amarilla ancha central.' },
+      careNote: null,
+    });
+    expect(out.description.es).toBe('Franja amarilla ancha central.');
+    expect(out.careNote).toBeNull();
+  });
+
+  it('LEAVES repotting.signs alone — Spec 5 owns its replacement and Task 45 owns its removal', () => {
+    // Removing this field before Spec 5's catalogue is seeded empties the REPOT info modal's signs
+    // section. This assertion exists so an over-eager cleanup goes red here rather than in production.
+    expect(repottingSchema.parse({ typicalIntervalMonths: 18, signs: ['Roots out of drainage holes'] }).signs)
+      .toEqual(['Roots out of drainage holes']);
   });
 });
