@@ -469,3 +469,42 @@ describe('operations that exist for nobody', () => {
     });
   }
 });
+
+describe('measurement semantics on the proposal operations (Spec 3 §5, D44)', () => {
+  const memberFor = (type: string) =>
+    (discriminatedUnionMembers(operationSchema) as any[]).find(
+      (m) => m.shape.type._def.value === type,
+    );
+  const descriptionOf = (schema: any): string => {
+    let s = schema;
+    while (s) {
+      if (typeof s._def.description === 'string' && s._def.description) return s._def.description;
+      s = s._def.innerType ?? s._def.schema;
+    }
+    return '';
+  };
+
+  it.each(['progress.create', 'progress.update'])(
+    '%s.sizeCm names the field as the HEIGHT and names the CONSEQUENCE of not using it',
+    (type) => {
+      const d = descriptionOf(memberFor(type).shape.sizeCm);
+      expect(d).toContain('HEIGHT');
+      expect(d).toContain('ONLY height the care engine reads');
+      // The load-bearing sentence: the gardener wrote a seedling's height into `observations`, which the
+      // engine cannot read, so the plant produced no crowding signal at all. The tool worked; the manual
+      // did not.
+      expect(d).toContain('observations');
+    },
+  );
+
+  it('both progress operations share ONE description string — never two copies that can drift', () => {
+    expect(descriptionOf(memberFor('progress.create').shape.sizeCm)).toBe(
+      descriptionOf(memberFor('progress.update').shape.sizeCm),
+    );
+  });
+
+  it('frequency.set.intervalDays says it is a cadence in DAYS, not a date', () => {
+    const d = descriptionOf(memberFor('frequency.set').shape.intervalDays);
+    expect(d).toContain('DAYS');
+  });
+});
