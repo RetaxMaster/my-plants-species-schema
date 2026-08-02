@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { plantProfileUpdateSchema } from './plant-profile.js';
+import { plantProfileUpdateSchema, soilMixEnum } from './plant-profile.js';
 import { PROGRESS_TAG_KEYS } from './progress-tag-constants.js';
 import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM, NOTE_MAX_LEN } from './care-operations-constants.js';
+import { POT_SIZE_CM_MAX } from './plant-profile-constants.js';
 import { airflowEnum, humidityCharacterEnum, lightTypeEnum } from './place.js';
 
 /** Calendar date, per the project's date rules. NEVER an ISO instant. */
@@ -83,7 +84,52 @@ const frequencySet = z.object({
     ),
 }).strict();
 const frequencyClear = z.object({ type: z.literal('frequency.clear'), plantId: plantTarget, task }).strict();
-const careDone = z.object({ type: z.literal('care.done'), plantId: plantTarget, task, occurredOn: ymd }).strict();
+/**
+ * `care.done`, with a CONDITIONALLY-required REPOT variant.
+ *
+ * A REPOT completion that does not say what the repot physically changed leaves the engine computing the
+ * crowding ratio against a pot that no longer exists — silently, with a plausible-looking number, for the
+ * rest of the plant's life. The owner's own Done form can no longer reach that state, so neither may an
+ * agent. This grants NO new capability: the capability-map rows for `care.done` are untouched; the
+ * operation's own schema simply requires more when `task === 'REPOT'`, and every scope that already holds
+ * `care.done` inherits the requirement identically.
+ *
+ * The plan for this task modelled the requirement as a discriminated pair (two `z.object` variants unioned
+ * on `task`, nested inside the outer `type`-discriminated union) so TypeScript would see the three fields
+ * as non-optional on the REPOT branch. That shape does not build: zod's `discriminatedUnion` requires
+ * every option to be a plain `ZodObject` exposing the discriminant as a `ZodLiteral` on `.shape` — a
+ * nested `z.union(...)` has no `.shape` at all (throws at construction), and giving both variants the same
+ * `type: z.literal('care.done')` and listing them as two separate top-level options throws too
+ * ("Discriminator property type has duplicate value care.done"). Both were verified against the installed
+ * zod (`^3.23.8`, resolved `3.25.76`) before writing this comment. So `care.done` stays the single flat
+ * `ZodObject` the outer `discriminatedUnion` needs — the three REPOT fields are declared `.optional()` in
+ * the shape, and the outer `.superRefine()` below enforces "required when `task === 'REPOT'`, forbidden
+ * otherwise" at runtime. This is a strictly weaker TYPE than the plan envisioned (the fields stay optional
+ * in `ProposalOperation`), but the RUNTIME contract — every test in this file's REPOT `describe` block — is
+ * identical either way.
+ */
+const careDone = z
+  .object({
+    type: z.literal('care.done'),
+    plantId: plantTarget,
+    task,
+    occurredOn: ymd,
+    /** The NEW pot's rim DIAMETER in cm — not the radius, not the height. Required when `task === 'REPOT'`. */
+    potSizeCm: z.number().int().positive().max(POT_SIZE_CM_MAX).optional(),
+    /** The NEW medium. Spec 1's charge and structural-life clocks key on it. Required when `task === 'REPOT'`. */
+    soilMix: soilMixEnum.optional(),
+    /** Fresh, charged medium? `false` = reused / inert. Required when `task === 'REPOT'`. */
+    charged: z.boolean().optional(),
+    /**
+     * Optional even on REPOT; when omitted with `charged: true`, the write core anchors it to
+     * `occurredOn`. Only meaningful (and only accepted) alongside a REPOT completion.
+     */
+    refreshedOn: ymd.optional(),
+  })
+  .strict();
+
+/** The three fields a REPOT `care.done` requires, and the only ones any OTHER `care.done` may not carry. */
+const CARE_DONE_REPOT_ONLY_FIELDS = ['potSizeCm', 'soilMix', 'charged'] as const;
 
 // A free-form owner/agent journal note. plantId follows the standard plant-scoped asymmetry
 // (doctor omits — capability map withholds it; gardener supplies). body is the note text, bounded by
@@ -246,6 +292,24 @@ const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.u
 export const operationSchema = z
   .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate, plantMemorialize, plantGift, substrateRefresh])
   .superRefine((op, ctx) => {
+    // `care.done`'s REPOT variant: the three completion fields are REQUIRED when `task === 'REPOT'` and
+    // FORBIDDEN on every other task — see the long comment on `careDone` above for why this lives here
+    // (a runtime refine) rather than as a nested discriminated-union member.
+    if (op.type === 'care.done') {
+      if (op.task === 'REPOT') {
+        for (const key of CARE_DONE_REPOT_ONLY_FIELDS) {
+          if (op[key] === undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `care.done requires ${key} when task is REPOT` });
+          }
+        }
+      } else {
+        for (const key of [...CARE_DONE_REPOT_ONLY_FIELDS, 'refreshedOn'] as const) {
+          if (op[key] !== undefined) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} is only valid on a REPOT care.done` });
+          }
+        }
+      }
+    }
     if (!REQUIRES_A_FIELD.has(op.type)) return;
     const identity = IDENTITY_KEYS_BY_TYPE[op.type] ?? DEFAULT_IDENTITY_KEYS;
     const writes = Object.keys(op).filter((k) => !identity.has(k));

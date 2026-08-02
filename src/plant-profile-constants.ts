@@ -106,6 +106,15 @@ export const SUBSTRATE_LIFE_DAYS: Record<SoilMix, number | null> = {
   other: null,
 };
 
+/**
+ * The upper bound on a pot's rim DIAMETER in centimetres, shared by every surface that accepts a
+ * `potSizeCm` value (the owner-facing plant profile and the agent `care.done` REPOT completion) so the
+ * bound lives exactly once. 500 cm (a 5-metre planter) is well past any houseplant container — the
+ * ceiling exists to reject typos and unit mistakes (e.g. millimetres), not to constrain a legitimate
+ * value.
+ */
+export const POT_SIZE_CM_MAX = 500;
+
 // Growth habit of the specimen.
 export const GROWTH_HABITS = [
   'upright',
