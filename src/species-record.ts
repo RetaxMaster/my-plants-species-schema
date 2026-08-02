@@ -33,6 +33,15 @@ export const speciesRecordSchema = z.object({
   // per-plant profile uses) so it can never fork. Nullable + default(null): every already-curated record
   // predates this field and must parse to null (falling back to a generic measure guide) until re-cured.
   growthHabit: z.enum(GROWTH_HABITS).nullable().default(null),
+  // Spec 2 §6.1 — the JUVENILE pair. Two RESEARCHED per-species figures, not a derived multiplier: no
+  // horticultural source states a pot-series ratio as a law, but "how long is this species juvenile" and
+  // "how often is a young one potted on" are ordinary, citable questions. This is NOT the double-counting
+  // a juvenile WATERING cadence would be: a small pot already drives faster watering through `potFactor`,
+  // whereas NOTHING in the engine models a juvenile filling a pot faster. See docs/care-engine.md §7.18.
+  /** Age in months below which this species is treated as juvenile. Nullable: pre-dates the field. */
+  juvenilePeriodMonths: z.number().int().positive().nullable().default(null),
+  /** Typical repot interval WHILE juvenile, in months. Nullable: pre-dates the field. */
+  juvenileRepotIntervalMonths: z.number().int().positive().nullable().default(null),
   metadata: metadataSchema,
 });
 
