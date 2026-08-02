@@ -8,6 +8,17 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.15.0
+
+### Added
+
+- **Two new juvenile-care fields on the species record: `juvenilePeriodMonths` and
+  `juvenileRepotIntervalMonths`.** Both are optional, independently-researched horticultural figures — how
+  long a specimen counts as young, and how often a young specimen is potted on while it does — rather than
+  a multiplier derived from the adult repotting interval. Every already-curated record predates them and
+  keeps parsing unchanged; when a species has no researched value for either, it stays `null` and consuming
+  apps fall back to today's adult-only behavior.
+
 ## 0.14.0
 
 ### Added
