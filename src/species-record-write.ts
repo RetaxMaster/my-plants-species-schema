@@ -1,14 +1,20 @@
 import { z } from 'zod';
 import { speciesRecordSchema } from './species-record.js';
 import {
+  COMMON_PESTS_DESCRIPTION,
+  CULTIVAR_CARE_NOTE_DESCRIPTION,
+  CULTIVAR_DESCRIPTION_DESCRIPTION,
   cultivarSchema,
   maintenanceSchema,
+  MISTING_NOTE_DESCRIPTION,
   mistingObject,
   mistingRefinement,
   MISTING_REFINEMENT_MESSAGE,
+  NATIVE_CLIMATE_DESCRIPTION,
   nativeClimateObject,
   nativeClimateRefinement,
   NATIVE_CLIMATE_REFINEMENT_MESSAGE,
+  PRUNING_DESCRIPTION,
   repottingSchema,
 } from './sections.js';
 import { localizedListWrite, localizedTextWrite } from './localized.js';
@@ -26,24 +32,27 @@ import { localizedListWrite, localizedTextWrite } from './localized.js';
  * parsing until the one-time re-curation has filled every brief and both locales.
  */
 
+// `.extend()` REPLACES the field's schema wholesale, so a `.describe()` set on the read field (sections.ts)
+// does not carry over automatically — each write variant below re-attaches the SAME description constant
+// (never a re-typed copy), so the curation tool doc keeps its guidance instead of silently going blank.
 const mistingWriteSchema = mistingObject
-  .extend({ note: localizedTextWrite.nullable().default(null) })
+  .extend({ note: localizedTextWrite.nullable().default(null).describe(MISTING_NOTE_DESCRIPTION) })
   .refine(mistingRefinement, MISTING_REFINEMENT_MESSAGE);
 
 const maintenanceWriteSchema = maintenanceSchema.extend({
-  pruning: localizedTextWrite,
+  pruning: localizedTextWrite.describe(PRUNING_DESCRIPTION),
   // No `.default([])` here on purpose: a legacy default would produce a bare array, which is exactly the
   // shape this schema exists to reject. A curated record states both locales explicitly, `[]` included.
-  commonPests: localizedListWrite,
+  commonPests: localizedListWrite.describe(COMMON_PESTS_DESCRIPTION),
 });
 
 const nativeClimateWriteSchema = nativeClimateObject
-  .extend({ description: localizedTextWrite })
+  .extend({ description: localizedTextWrite.describe(NATIVE_CLIMATE_DESCRIPTION) })
   .refine(nativeClimateRefinement, NATIVE_CLIMATE_REFINEMENT_MESSAGE);
 
 const cultivarWriteSchema = cultivarSchema.extend({
-  description: localizedTextWrite,
-  careNote: localizedTextWrite.nullable(),
+  description: localizedTextWrite.describe(CULTIVAR_DESCRIPTION_DESCRIPTION),
+  careNote: localizedTextWrite.nullable().describe(CULTIVAR_CARE_NOTE_DESCRIPTION),
 });
 
 // `repottingSchema` (sections.ts) is deliberately TOLERANT: it is a plain `z.object`, so Zod strips an

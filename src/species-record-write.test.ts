@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { speciesRecordSchema } from './species-record.js';
 import { speciesRecordWriteSchema } from './species-record-write.js';
+import { renderToolDoc } from './tool-doc.js';
+import {
+  COMMON_PESTS_DESCRIPTION,
+  CULTIVAR_CARE_NOTE_DESCRIPTION,
+  CULTIVAR_DESCRIPTION_DESCRIPTION,
+  MISTING_NOTE_DESCRIPTION,
+  NATIVE_CLIMATE_DESCRIPTION,
+  PRUNING_DESCRIPTION,
+} from './sections.js';
 
 // A complete, CURATED record. Every localized field carries both locales.
 const curated = () => ({
@@ -86,6 +95,21 @@ describe('speciesRecordWriteSchema — tolerant reader, canonical writer', () =>
       const messages = written.error.issues.map((i) => i.message).join(' | ');
       expect(messages).toContain('repot_signs');
     }
+  });
+
+  it('keeps every bilingual field\'s human-facing description on the WRITE variant (Zod .extend() replaces ' +
+    'the field wholesale, so a lost re-attachment would silently blank a curation tool doc\'s guidance)', () => {
+    const doc = renderToolDoc({
+      title: 'species record (write)',
+      tools: [{ name: 'species record', schema: speciesRecordWriteSchema, example: curated() }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(doc).toContain(MISTING_NOTE_DESCRIPTION);
+    expect(doc).toContain(PRUNING_DESCRIPTION);
+    expect(doc).toContain(COMMON_PESTS_DESCRIPTION);
+    expect(doc).toContain(NATIVE_CLIMATE_DESCRIPTION);
+    expect(doc).toContain(CULTIVAR_DESCRIPTION_DESCRIPTION);
+    expect(doc).toContain(CULTIVAR_CARE_NOTE_DESCRIPTION);
   });
 
   it('keeps every cross-field invariant the read schema enforces', () => {
