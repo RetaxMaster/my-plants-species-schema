@@ -8,6 +8,17 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.20.0
+
+### Fixed
+
+- **A date that cannot exist is now refused instead of being quietly turned into a different one.** Every
+  calendar date in an agent write proposal — when a repot happened, when substrate was refreshed, when a
+  plant was acquired, when a progress entry or clinical record was recorded — used to be checked only for
+  its SHAPE. A value like `2026-02-31` passed, and the date machinery then rolled it forward to March 3rd.
+  The owner would read and approve one date and a different one would be saved and audited. Impossible dates
+  are now rejected outright, naming the field, and real leap days (`2024-02-29`) still pass.
+
 ## 0.19.0
 
 ### Added
