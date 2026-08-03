@@ -9,6 +9,7 @@ import {
   nativeClimateObject,
   nativeClimateRefinement,
   NATIVE_CLIMATE_REFINEMENT_MESSAGE,
+  repottingSchema,
 } from './sections.js';
 import { localizedListWrite, localizedTextWrite } from './localized.js';
 
@@ -45,8 +46,22 @@ const cultivarWriteSchema = cultivarSchema.extend({
   careNote: localizedTextWrite.nullable(),
 });
 
+// `repottingSchema` (sections.ts) is deliberately TOLERANT: it is a plain `z.object`, so Zod strips an
+// unknown key — which is exactly right for the READER, because a legacy stored record still carries
+// `signs` (D42 removed the field; old rows keep parsing). That tolerance must never reach the WRITER: a
+// curation that still supplies `repotting.signs` must be told, explicitly, where the signs actually go —
+// silently discarding it would return a green validation to the operator while the field vanishes.
+// `.strict(message)` is the same object (never re-declared — a copy is the fork this project forbids),
+// switched from "strip" to "reject any key it does not declare", with a message naming the replacement.
+const repottingWriteSchema = repottingSchema.strict(
+  "'repotting.signs' is no longer part of the record (removed by D42). The species' observable " +
+    "repotting signs now live in the structured repot_signs catalogue (curated via the " +
+    "repot_signs_researcher / db:recure) — remove 'signs' from this section and curate the signs there.",
+);
+
 export const speciesRecordWriteSchema = speciesRecordSchema.extend({
   misting: mistingWriteSchema.default({ benefit: 'avoid', baseFrequencyDays: null, note: null }),
+  repotting: repottingWriteSchema,
   maintenance: maintenanceWriteSchema,
   nativeClimate: nativeClimateWriteSchema,
   cultivars: z.array(cultivarWriteSchema).default([]),

@@ -21,7 +21,7 @@ const curated = () => ({
   temperature: { survivalMinC: 5, idealMinC: 18, idealMaxC: 27, survivalMaxC: 35 },
   humidity: { minimumPct: 50, idealPct: 70 },
   fertilizing: { activeSeasons: ['spring', 'summer'], inSeasonFrequencyDays: 21, reduceInDormancy: true },
-  repotting: { typicalIntervalMonths: 18, signs: ['Roots out of drainage holes'] },
+  repotting: { typicalIntervalMonths: 18 },
   maintenance: {
     pruning: { en: 'Trim spent fronds.', es: 'Recorta las frondas secas.' },
     rotationDays: 30,
@@ -68,6 +68,24 @@ describe('speciesRecordWriteSchema — tolerant reader, canonical writer', () =>
     expect(speciesRecordSchema.safeParse(record).success).toBe(true);
     // The writer must not.
     expect(speciesRecordWriteSchema.safeParse(record).success).toBe(false);
+  });
+
+  it('the READER still accepts a legacy repotting.signs, but the WRITER rejects it and names the replacement', () => {
+    const record = curated() as any;
+    record.repotting.signs = ['Roots out of drainage holes'];
+
+    // The reader (D42's stated tolerance) parses it fine and simply drops the unknown key.
+    const read = speciesRecordSchema.safeParse(record);
+    expect(read.success).toBe(true);
+    if (read.success) expect(read.data.repotting).not.toHaveProperty('signs');
+
+    // The writer refuses it outright, naming the repot_signs catalogue as where signs now belong.
+    const written = speciesRecordWriteSchema.safeParse(record);
+    expect(written.success).toBe(false);
+    if (!written.success) {
+      const messages = written.error.issues.map((i) => i.message).join(' | ');
+      expect(messages).toContain('repot_signs');
+    }
   });
 
   it('keeps every cross-field invariant the read schema enforces', () => {
