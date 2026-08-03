@@ -28,7 +28,7 @@ const validRecord: z.input<typeof speciesRecordSchema> = {
   temperature: { survivalMinC: 5, idealMinC: 18, idealMaxC: 27, survivalMaxC: 35 },
   humidity: { minimumPct: 40, idealPct: 60 },
   fertilizing: { activeSeasons: ['spring', 'summer'], inSeasonFrequencyDays: 14, reduceInDormancy: true },
-  repotting: { typicalIntervalMonths: 24, signs: ['Roots out of drainage holes'] },
+  repotting: { typicalIntervalMonths: 24 },
   maintenance: { pruning: 'Trim leggy stems.', rotationDays: 14, leafCleaningDays: 30, commonPests: ['spider mites'] },
   nativeClimate: { description: 'Tropical rainforest understory.', koppen: 'Af', hardinessMinC: 10, hardinessMaxC: 38 },
   cultivars: [

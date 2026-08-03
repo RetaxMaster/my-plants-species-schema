@@ -84,7 +84,13 @@ export const fertilizingSchema = z.object({
 
 export const repottingSchema = z.object({
   typicalIntervalMonths: z.number().int().positive(),
-  signs: z.array(z.string().min(1)).default([]),
+  // `signs` is GONE (D42). The bilingual, per-species `repot_signs` CATALOGUE replaces it: stable slug ids
+  // (so a recorded observation keeps its referent across re-curations), text in both locales, and an ordinal
+  // evidence class the engine can weight. Keeping the free-text array beside the catalogue would be two
+  // sources for one thing — the fork this project's first rule forbids.
+  //
+  // Old rows still CARRY the key in their stored JSON; Zod strips unknown keys, so they keep parsing and the
+  // stale English list simply stops being readable. No data migration is needed or wanted.
 });
 
 export const maintenanceSchema = z.object({
