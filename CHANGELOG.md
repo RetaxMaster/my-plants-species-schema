@@ -8,6 +8,29 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.18.0
+
+### Added
+
+- **Species free text is now bilingual.** Every curator-authored field — common names, care notes, soil/light
+  descriptions, and all narrative fields — now requires entries in both English and Spanish (Mexican), supplied
+  as `{ en: string, es: string }` objects. The contract remains backward-compatible with legacy English-only
+  records via a tolerant reader, so existing species already curated continue parsing unchanged; **new curations
+  and edits must supply both languages**.
+- **The structured repotting-sign catalogue replaces unstructured prose.** `repotting.signs` — a freeform,
+  English-only array — has been removed entirely from the species-record contract. A species' repotting signs
+  are now authored as rows in a bilingual, per-species catalogue (stable ids like
+  `universal--water-runs-through`, both locales, an ordinal evidence class the care engine can weight) —
+  visible to agents and owners as discrete, translated signals instead of invisible English text. A record
+  still carrying the old `signs` key parses fine (the schema strips unknown keys); no data migration is needed.
+- **Several plant-measurement fields now document their own meaning and units in the schema.** The pot's
+  diameter (`potSizeCm`), a progress entry's recorded height (`sizeCm`), a plant's age (`ageMonths`), and a
+  manually-set task cadence (`intervalDays`) each carry a Zod description explaining exactly what the field
+  means, its units, and — where it matters — what it is NOT (e.g. `potSizeCm` is the rim diameter, never the
+  radius or the height; `sizeCm` is the ONLY height the care engine reads, so a height recorded only in prose
+  is invisible to scheduling). Written so the care engine, the agents, and anyone reading the data model
+  understand the intent without guessing or reaching for external docs.
+
 ## 0.15.0
 
 ### Added
