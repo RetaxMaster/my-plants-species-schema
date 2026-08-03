@@ -4,9 +4,15 @@ import { PROGRESS_TAG_KEYS } from './progress-tag-constants.js';
 import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM, NOTE_MAX_LEN } from './care-operations-constants.js';
 import { POT_SIZE_CM_MAX } from './plant-profile-constants.js';
 import { airflowEnum, humidityCharacterEnum, lightTypeEnum } from './place.js';
+import { strictYmd } from './calendar-date.js';
 
-/** Calendar date, per the project's date rules. NEVER an ISO instant. */
-const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a YYYY-MM-DD calendar date');
+/**
+ * Calendar date, per the project's date rules. NEVER an ISO instant. This is the STRICT variant
+ * (`./calendar-date.js`) — a shape-only regex would silently accept `2026-02-31` and hand a write core
+ * `2026-03-03` (JS `Date` rolls an impossible day forward), so the owner's consent and the persisted write
+ * would disagree. Aliased to the historical local name so every call site below is unchanged.
+ */
+const ymd = strictYmd;
 
 const task = z.enum(FREQUENCY_BEARING_TASKS);
 const health = z.enum(PROGRESS_HEALTH_VALUES);
