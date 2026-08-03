@@ -65,6 +65,11 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'frequency.set': { allowed: true, omitFields: ['plantId'] },
     'frequency.clear': { allowed: true, omitFields: ['plantId'] },
     'care.done': { allowed: true, omitFields: ['plantId'] },
+    // The owner's Postpone button, agent-side. Both scopes hold it: the owner's ruling was simply "let the
+    // gardener and the doctor mark an activity as postponed themselves." Like every plant-scoped op, the
+    // doctor may not name its target plant. REPOT is absent from this operation's TASK vocabulary (the
+    // schema's `POSTPONABLE_TASKS`), not from this row -- see that constant for why.
+    'care.postpone': { allowed: true, omitFields: ['plantId'] },
     // A free-form journal note follows the same plant-scoped asymmetry as progress.create: both roles
     // may add one, and the doctor's `plantId` is withheld exactly like every other plant-scoped op.
     'note.create': { allowed: true, omitFields: ['plantId'] },
@@ -106,6 +111,8 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'frequency.set': { allowed: true, requireFields: ['plantId'] },
     'frequency.clear': { allowed: true, requireFields: ['plantId'] },
     'care.done': { allowed: true, requireFields: ['plantId'] },
+    // Same asymmetry as every other plant-scoped op: owner-anchored, so it MUST name the plant it targets.
+    'care.postpone': { allowed: true, requireFields: ['plantId'] },
     // Same asymmetry as progress.create: the gardener supplies its own `plantId`, unfiltered — and, being
     // plant-scoped, MUST supply it. This is the operation the live gardener reported the contradiction on:
     // its guide called `plantId` obligatory while the generated tool doc called it optional.

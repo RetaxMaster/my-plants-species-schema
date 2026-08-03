@@ -53,7 +53,7 @@ describe('the asymmetric and field-level rules', () => {
   // NAME a plant on any plant-scoped op — the map withholds `plantId` on all seven, and the gardener (which
   // has no pin) is the scope that supplies it. A single missing `omitFields: ['plantId']` here would let a
   // doctor proposal reach another of the owner's plants.
-  const PLANT_SCOPED_OPS = ['profile.update', 'plant.update', 'progress.create', 'progress.update', 'frequency.set', 'frequency.clear', 'care.done'] as const;
+  const PLANT_SCOPED_OPS = ['profile.update', 'plant.update', 'progress.create', 'progress.update', 'frequency.set', 'frequency.clear', 'care.done', 'care.postpone'] as const;
   it('withholds plantId from the doctor on every plant-scoped op, and grants it to the gardener', () => {
     for (const t of PLANT_SCOPED_OPS) {
       expect(omittedFieldsFor('doctor', t)).toContain('plantId');
@@ -133,7 +133,7 @@ describe('requireFields — the scope-level "you must always send this" mirror o
       requiredFieldsFor('gardener', t).includes('plantId'),
     );
     expect(actual).toEqual(expected);
-    expect(actual).toHaveLength(11);
+    expect(actual).toHaveLength(12);
   });
 
   it('requires NOTHING of the doctor — its token is the pin, and the field is withheld outright', () => {
@@ -195,13 +195,13 @@ describe('permittedTypesFor', () => {
   it('returns the union-ordered subset each scope may propose', () => {
     expect(permittedTypesFor('doctor')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
-      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
+      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'care.postpone', 'note.create',
       'clinical_record.create', 'clinical_record.update',
       'plant.memorialize', 'plant.gift', 'substrate.refresh',
     ]);
     expect(permittedTypesFor('gardener')).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
-      'frequency.set', 'frequency.clear', 'care.done', 'note.create',
+      'frequency.set', 'frequency.clear', 'care.done', 'care.postpone', 'note.create',
       'place.create', 'place.update', 'city.create', 'city.update', 'plant.create',
       'plant.memorialize', 'plant.gift', 'substrate.refresh',
     ]);

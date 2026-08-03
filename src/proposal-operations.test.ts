@@ -12,7 +12,8 @@ import {
   discriminatedUnionMembers,
   type ProposalOperation,
 } from './proposal-operations.js';
-import { NOTE_MAX_LEN } from './care-operations-constants.js';
+import { FREQUENCY_BEARING_TASKS, NOTE_MAX_LEN } from './care-operations-constants.js';
+import { REPOT_POSTPONE_REASONS } from './feedback-reason-constants.js';
 
 describe('operationSchema', () => {
   it('accepts a valid care.done', () => {
@@ -80,6 +81,23 @@ describe('findOverlappingWriteSet', () => {
       { type: 'care.done', task: 'WATER', occurredOn: '2026-07-16' },
       { type: 'care.done', task: 'WATER', occurredOn: '2026-07-16' },
     ] as ProposalOperation[])).toBe('care:WATER:2026-07-16');
+  });
+  // The `care:` namespace is SHARED by care.done and care.postpone on purpose — see writeSet's own comment.
+  it('collides a care.done with a care.postpone on the same plant, task and day', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'care.done', task: 'WATER', occurredOn: '2026-07-16' },
+      { type: 'care.postpone', task: 'WATER', occurredOn: '2026-07-16', postponeToOn: '2026-07-20' },
+    ] as ProposalOperation[])).toBe('care:WATER:2026-07-16');
+  });
+  it('does NOT collide a care.postpone with one on a DIFFERENT task, day or plant', () => {
+    expect(findOverlappingWriteSet([
+      { type: 'care.postpone', task: 'WATER', occurredOn: '2026-07-16', postponeToOn: '2026-07-20' },
+      { type: 'care.postpone', task: 'MIST', occurredOn: '2026-07-16', postponeToOn: '2026-07-20' },
+    ] as ProposalOperation[])).toBeNull();
+    expect(findOverlappingWriteSet([
+      { type: 'care.postpone', plantId: 'PLANT_1', task: 'WATER', occurredOn: '2026-07-16', postponeToOn: '2026-07-20' },
+      { type: 'care.postpone', plantId: 'PLANT_2', task: 'WATER', occurredOn: '2026-07-16', postponeToOn: '2026-07-20' },
+    ] as ProposalOperation[])).toBeNull();
   });
   it('returns the overlap key for two plant.update ops touching the same field', () => {
     expect(findOverlappingWriteSet([
@@ -184,7 +202,7 @@ describe('PROPOSAL_OPERATION_TYPES', () => {
     // `toContain` — the exact-equality is what makes a forgotten consumer fail loudly instead of shipping.
     expect(PROPOSAL_OPERATION_TYPES).toEqual([
       'profile.update', 'plant.update', 'progress.create', 'progress.update',
-      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'note.create',
+      'progress.delete', 'frequency.set', 'frequency.clear', 'care.done', 'care.postpone', 'note.create',
       'clinical_record.create', 'clinical_record.update', 'place.create', 'place.update',
       'city.create', 'city.update', 'plant.create', 'plant.memorialize', 'plant.gift',
       'substrate.refresh',
@@ -213,6 +231,7 @@ describe('single-operation serialization bound', () => {
     'frequency.set': { type: 'frequency.set', task: 'WATER', intervalDays: 3650 },
     'frequency.clear': { type: 'frequency.clear', task: 'WATER' },
     'care.done': { type: 'care.done', task: 'WATER', occurredOn: '2026-07-20' },
+    'care.postpone': { type: 'care.postpone', task: 'WATER', occurredOn: '2026-07-20', postponeToOn: '2026-07-21' },
     'note.create': { type: 'note.create', plantId: 'p'.repeat(64), body: 'b'.repeat(NOTE_MAX_LEN) },
     'clinical_record.create': { type: 'clinical_record.create', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS), recordedOn: '2026-07-20' },
     'clinical_record.update': { type: 'clinical_record.update', body: 'b'.repeat(MAX_CLINICAL_BODY_CHARS) },
@@ -562,5 +581,112 @@ describe('care.done — the REPOT variant closes the silent-rot gap', () => {
 
   it('rejects an unknown soilMix', () => {
     expect(operationSchema.safeParse({ ...repotDone, soilMix: 'magic-dust' }).success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------
+// `care.postpone` — the agent-facing half of the owner's Postpone button (owner ruling 2026-08-03).
+// ---------------------------------------------------------------------------------------------------
+describe('care.postpone — the DATE branch (every task except REPOT)', () => {
+  const base = { type: 'care.postpone', task: 'WATER', occurredOn: '2026-08-01', postponeToOn: '2026-08-10' };
+
+  it('accepts a doctor-shaped postpone (no plantId — the token is the pin)', () => {
+    expect(operationSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('accepts a gardener-shaped postpone (plantId names the target)', () => {
+    expect(operationSchema.safeParse({ ...base, plantId: 'PLANT_1' }).success).toBe(true);
+  });
+
+  it('accepts every non-REPOT frequency-bearing task', () => {
+    for (const t of FREQUENCY_BEARING_TASKS) {
+      if (t === 'REPOT') continue;
+      expect(operationSchema.safeParse({ ...base, task: t }).success, `task=${t}`).toBe(true);
+    }
+  });
+
+  it('requires postponeToOn — a postponement that moves nothing is a postponement in name only', () => {
+    const { postponeToOn: _drop, ...withoutDate } = base;
+    const parsed = operationSchema.safeParse(withoutDate);
+    expect(parsed.success).toBe(false);
+    expect(parsed.success === false && parsed.error.issues[0].path).toEqual(['postponeToOn']);
+  });
+
+  it('rejects a postponeToOn that is not strictly AFTER occurredOn', () => {
+    // Equal: a "postponement" to the very day it was recorded — moves nothing.
+    expect(operationSchema.safeParse({ ...base, postponeToOn: '2026-08-01' }).success).toBe(false);
+    // Earlier: would push the task INTO the past and make it more overdue — the opposite of postponing.
+    const past = operationSchema.safeParse({ ...base, postponeToOn: '2026-07-25' });
+    expect(past.success).toBe(false);
+    expect(past.success === false && past.error.issues[0].path).toEqual(['postponeToOn']);
+  });
+
+  it('FORBIDS reason — the repot reason vocabulary means nothing on a dated postpone', () => {
+    const parsed = operationSchema.safeParse({ ...base, reason: 'needed-cannot-now' });
+    expect(parsed.success).toBe(false);
+    expect(parsed.success === false && parsed.error.issues[0].path).toEqual(['reason']);
+  });
+
+  it('rejects both dates as ISO instants, like every other calendar-date field', () => {
+    expect(operationSchema.safeParse({ ...base, occurredOn: '2026-08-01T00:00:00Z' }).success).toBe(false);
+    expect(operationSchema.safeParse({ ...base, postponeToOn: '2026-08-10T00:00:00Z' }).success).toBe(false);
+  });
+
+  it('rejects a calendar-impossible postponeToOn (the strict date reader, not a shape regex)', () => {
+    expect(operationSchema.safeParse({ ...base, postponeToOn: '2026-02-31' }).success).toBe(false);
+  });
+
+  it('is .strict() — it carries no care.done completion fields', () => {
+    expect(operationSchema.safeParse({ ...base, potSizeCm: 20 }).success).toBe(false);
+  });
+});
+
+// ⚠️ THE REPOT BRANCH. A repot is not a scheduled chore in this app but an INSPECTION, so the owner does
+// not postpone one to a date — the write core returns early into `recordRepotFeedback`, takes one of the
+// three REPOT_POSTPONE_REASONS, derives its own floor from REPOT_FLOOR_DAYS[reason], and NEVER reads
+// `postponeToOn`. Accepting a date there would declare a field the write path silently discards: the agent
+// would believe it postponed to that day, the owner would see a different one, and nothing would error.
+// That is why the forbid below is a real assertion and not a formality.
+describe('care.postpone — the REPOT branch (postponed by REASON, never by date)', () => {
+  const repot = { type: 'care.postpone', task: 'REPOT', occurredOn: '2026-08-01', reason: 'needed-cannot-now' };
+
+  it('accepts a REPOT postpone carrying a reason', () => {
+    expect(operationSchema.safeParse(repot).success).toBe(true);
+    expect(operationSchema.safeParse({ ...repot, plantId: 'PLANT_1' }).success).toBe(true);
+  });
+
+  it('accepts each of the three reasons, and nothing outside that vocabulary', () => {
+    for (const r of REPOT_POSTPONE_REASONS) {
+      expect(operationSchema.safeParse({ ...repot, reason: r }).success, `reason=${r}`).toBe(true);
+    }
+    // A WATER postpone reason is a real slug elsewhere in the app — exactly the kind of near-miss the
+    // narrow enum has to catch.
+    expect(operationSchema.safeParse({ ...repot, reason: 'wet-soil' }).success).toBe(false);
+  });
+
+  it('REQUIRES a reason — an unexplained repot postponement has no floor to derive', () => {
+    const { reason: _drop, ...withoutReason } = repot;
+    const parsed = operationSchema.safeParse(withoutReason);
+    expect(parsed.success).toBe(false);
+    expect(parsed.success === false && parsed.error.issues[0].path).toEqual(['reason']);
+  });
+
+  it('FORBIDS postponeToOn — the write path never reads it, so accepting it would silently discard it', () => {
+    const parsed = operationSchema.safeParse({ ...repot, postponeToOn: '2026-08-20' });
+    expect(parsed.success).toBe(false);
+    expect(parsed.success === false && parsed.error.issues[0].path).toEqual(['postponeToOn']);
+    // ...and it is refused even when the date is otherwise perfectly valid and in the future, i.e. the
+    // rejection is about the FIELD being meaningless here, not about the value.
+    expect(operationSchema.safeParse({ ...repot, postponeToOn: '2027-01-01' }).success).toBe(false);
+  });
+
+  // The asymmetry with `care.done` is deliberate and is asserted next to the rule it qualifies, so it
+  // never reads as a bug somebody should "fix": a repot DONE is a real completion with real physical
+  // consequences (a new pot, a new medium), and it routes to `completeRepotCore`.
+  it('care.done still takes REPOT with its completion payload — a repot can be finished, just not dated-postponed', () => {
+    expect(operationSchema.safeParse({
+      type: 'care.done', task: 'REPOT', occurredOn: '2026-08-01',
+      potSizeCm: 20, soilMix: 'all-purpose', charged: true,
+    }).success).toBe(true);
   });
 });

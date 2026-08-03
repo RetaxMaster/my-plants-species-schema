@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { plantProfileUpdateSchema, soilMixEnum } from './plant-profile.js';
 import { PROGRESS_TAG_KEYS } from './progress-tag-constants.js';
 import { FREQUENCY_BEARING_TASKS, PROGRESS_HEALTH_VALUES, MAX_SIZE_CM, NOTE_MAX_LEN } from './care-operations-constants.js';
+import { repotPostponeReasonEnum } from './feedback-reason.js';
 import { POT_SIZE_CM_MAX } from './plant-profile-constants.js';
 import { airflowEnum, humidityCharacterEnum, lightTypeEnum } from './place.js';
 import { strictYmd } from './calendar-date.js';
@@ -136,6 +137,52 @@ const careDone = z
 
 /** The three fields a REPOT `care.done` requires, and the only ones any OTHER `care.done` may not carry. */
 const CARE_DONE_REPOT_ONLY_FIELDS = ['potSizeCm', 'soilMix', 'charged'] as const;
+
+/**
+ * The agent-facing half of the owner's own Postpone button, landing in the SAME write core the owner's
+ * form does (`recordFeedbackCore`, `type: 'POSTPONED'`) — never a second implementation. A postponement
+ * is not merely administrative: the engine LEARNS from it (repeated postponements lengthen the task's
+ * interval, and a REPOT postpone can feed the repot calibration channel), which is precisely why it goes
+ * through the owner's path rather than writing a `TaskOverride` directly.
+ *
+ * ⚠️ **REPOT is postponed by REASON, every other task by DATE — and the two vocabularies are mutually
+ * exclusive.** This is not a stylistic split; it is what the write core actually does. For every task
+ * except REPOT it reads `postponeToOn` and writes a `TaskOverride` at that day. REPOT returns EARLY into
+ * `recordRepotFeedback`, which treats the postponement as an INSPECTION result: it takes one of the three
+ * `REPOT_POSTPONE_REASONS`, derives its own administrative floor from `REPOT_FLOOR_DAYS[reason]`, and
+ * **never reads `postponeToOn` at all**. So `postponeToOn` on a REPOT would be a field the write path
+ * silently discards — the agent would believe it postponed to a date, the owner would see a different
+ * date, and nothing anywhere would error. Forbidding it is what makes that impossible; the refinement
+ * below enforces required-and-forbidden in both directions.
+ *
+ * The one thing an agent CANNOT do is resolve an open repot verdict: when the plant has an unresolved
+ * REPOT evaluation the write core demands the `evaluationId` of the questionnaire row being answered, and
+ * no agent can obtain one — it never runs the owner's questionnaire. That 400 reaches the agent
+ * UNMODIFIED, deliberately: "the same conditions the owner has" includes the conditions that stop it.
+ *
+ * `postponeToOn` is REQUIRED on the date branch even though the owner's core treats it as optional. The
+ * owner's UI always supplies it; an operation that omitted it would record a care event and move nothing.
+ * It must also be strictly AFTER `occurredOn` — a "postpone" into the past makes the task MORE overdue,
+ * the opposite of what the owner approving the card reads.
+ *
+ * SHAPE NOTE: a flat `ZodObject` with both fields `.optional()` and the require/forbid rule in the outer
+ * `.superRefine()` — the SAME shape `care.done`'s REPOT variant already uses, for the same zod reason
+ * (see `careDone`'s long comment). A second, differently-shaped way of saying "this task variant needs
+ * different fields" would be the fork this project forbids.
+ */
+const carePostpone = z
+  .object({
+    type: z.literal('care.postpone'),
+    plantId: plantTarget,
+    task,
+    /** The day the postponement is being recorded. */
+    occurredOn: ymd,
+    /** The day the task moves to. REQUIRED on every task except REPOT; FORBIDDEN on REPOT. */
+    postponeToOn: ymd.optional(),
+    /** Why the repot is being put off. REQUIRED when `task === 'REPOT'`; FORBIDDEN on every other task. */
+    reason: repotPostponeReasonEnum.optional(),
+  })
+  .strict();
 
 // A free-form owner/agent journal note. plantId follows the standard plant-scoped asymmetry
 // (doctor omits — capability map withholds it; gardener supplies). body is the note text, bounded by
@@ -296,7 +343,7 @@ const DEFAULT_IDENTITY_KEYS: ReadonlySet<string> = new Set(['type']);
 const REQUIRES_A_FIELD: ReadonlySet<ProposalOperationType> = new Set(['profile.update', 'plant.update', 'progress.update', 'place.update', 'city.update']);
 
 export const operationSchema = z
-  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate, plantMemorialize, plantGift, substrateRefresh])
+  .discriminatedUnion('type', [profileUpdate, plantUpdate, progressCreate, progressUpdate, progressDelete, frequencySet, frequencyClear, careDone, carePostpone, noteCreate, clinicalRecordCreate, clinicalRecordUpdate, placeCreate, placeUpdate, cityCreate, cityUpdate, plantCreate, plantMemorialize, plantGift, substrateRefresh])
   .superRefine((op, ctx) => {
     // `care.done`'s REPOT variant: the three completion fields are REQUIRED when `task === 'REPOT'` and
     // FORBIDDEN on every other task — see the long comment on `careDone` above for why this lives here
@@ -313,6 +360,40 @@ export const operationSchema = z
           if (op[key] !== undefined) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} is only valid on a REPOT care.done` });
           }
+        }
+      }
+    }
+    // `care.postpone`: REPOT is postponed by REASON, every other task by DATE, and each branch FORBIDS the
+    // other's field -- see `carePostpone`'s own comment for why a `postponeToOn` on a REPOT would be a
+    // silently-discarded field rather than a harmless extra.
+    if (op.type === 'care.postpone') {
+      if (op.task === 'REPOT') {
+        if (op.reason === undefined) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['reason'], message: 'care.postpone requires reason when task is REPOT' });
+        }
+        if (op.postponeToOn !== undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['postponeToOn'],
+            message: 'postponeToOn is not valid on a REPOT care.postpone — a repot is postponed by reason, never by date',
+          });
+        }
+      } else {
+        if (op.reason !== undefined) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['reason'], message: 'reason is only valid on a REPOT care.postpone' });
+        }
+        if (op.postponeToOn === undefined) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['postponeToOn'], message: 'care.postpone requires postponeToOn' });
+        } else if (op.postponeToOn <= op.occurredOn) {
+          // The owner's core happily writes a TaskOverride at any date, so a past `postponeToOn` would
+          // persist and make the task MORE overdue. String comparison is exact for `YYYY-MM-DD` (both are
+          // strict calendar dates, so fixed-width and zero-padded) and needs no Date parsing, which would
+          // drag a timezone into a pure schema.
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['postponeToOn'],
+            message: 'care.postpone requires postponeToOn to be after occurredOn',
+          });
         }
       }
     }
@@ -391,7 +472,14 @@ function writeSet(op: ProposalOperation): string[] {
     case 'progress.delete': return [`entry:${op.entryId}`]; // entryId is globally unique, so it already distinguishes plants
     case 'frequency.set':
     case 'frequency.clear': return [op.plantId ? `frequency:${op.plantId}:${op.task}` : `frequency:${op.task}`];
-    case 'care.done': return [op.plantId ? `care:${op.plantId}:${op.task}:${op.occurredOn}` : `care:${op.task}:${op.occurredOn}`];
+    // ONE shared `care:` namespace for BOTH care operations, deliberately -- the key carries no `type`
+    // component, so a `care.done` and a `care.postpone` naming the same plant, task and day COLLIDE and the
+    // proposal is refused. That is the correct answer, not an accident of reuse: marking a task done and
+    // postponing it on the same day are contradictory instructions, and two postponements of the same task
+    // on the same day would have the second silently overwrite the first's TaskOverride. Refusing the pair
+    // makes the agent state which one it means.
+    case 'care.done':
+    case 'care.postpone': return [op.plantId ? `care:${op.plantId}:${op.task}:${op.occurredOn}` : `care:${op.task}:${op.occurredOn}`];
     // A CONSTANT key, deliberately date-free, for BOTH operations.
     //
     // `clinical:<recordedOn>` is not computable here: this function is PURE — no database, no owner, no

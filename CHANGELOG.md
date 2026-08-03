@@ -8,6 +8,33 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.22.0
+
+### Added
+
+- **The Plant Doctor and the Gardener can now propose postponing a care task.** Both agents could already
+  propose marking a task done; postponing — the other half of the same button the owner has in the app —
+  was simply never modelled, so an agent that concluded "hold off on watering this one for a week" had no
+  way to say it. The new `care.postpone` operation carries the task, the day it is being recorded, and the
+  day the task moves to, and it lands in exactly the same write path the owner's own Postpone uses, so it
+  teaches the care engine the same way an owner's postponement does. As with every other operation that
+  targets one plant, the doctor may not name a plant (its session is already pinned to one) and the
+  whole-garden gardener must.
+- Two guards a postponement needs and the owner's own form has always given it implicitly: the new date is
+  required, and it must fall strictly after the day being recorded — a "postponement" into the past would
+  make the task more overdue, not less.
+- **Repotting is postponable too, but by a reason rather than a date**, because that is how the app itself
+  works. A repot is not a scheduled chore here but an inspection, so putting one off means saying *why* —
+  not needed yet, needed but not possible right now, or could not check — and the app works out how long
+  to wait from that. Giving a repot postponement a date is refused outright rather than accepted and
+  ignored, which is what would otherwise happen: the agent would believe it had moved the repot to a day
+  the app never uses. The two vocabularies are exclusive in both directions, so neither can be sent where
+  it means nothing.
+- One thing an agent still cannot do, deliberately: if a plant has an unanswered repot questionnaire
+  waiting in the app, only the owner can resolve it, and an agent's postponement is refused with the same
+  message the owner's own app would show. Agents were given control over what already exists, not a new
+  way around it.
+
 ## 0.21.0
 
 ### Fixed
