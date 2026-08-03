@@ -104,9 +104,9 @@ describe('fertilizing / repotting / maintenance', () => {
     ).toThrow();
   });
 
-  it('defaults repotting signs and maintenance pests to empty arrays', () => {
+  it('defaults maintenance pests to an empty array (repotting.signs removed, D42)', () => {
     const repotting = repottingSchema.parse({ typicalIntervalMonths: 18 });
-    expect(repotting.signs).toEqual([]);
+    expect(repotting).not.toHaveProperty('signs');
     const maintenance = maintenanceSchema.parse({
       pruning: 'Trim leggy stems in spring.',
       rotationDays: 14,
@@ -263,10 +263,13 @@ describe('the bilingual free-text fields (Spec 3 §4.1)', () => {
     expect(out.careNote).toBeNull();
   });
 
-  it('LEAVES repotting.signs alone — Spec 5 owns its replacement and Task 45 owns its removal', () => {
-    // Removing this field before Spec 5's catalogue is seeded empties the REPOT info modal's signs
-    // section. This assertion exists so an over-eager cleanup goes red here rather than in production.
-    expect(repottingSchema.parse({ typicalIntervalMonths: 18, signs: ['Roots out of drainage holes'] }).signs)
-      .toEqual(['Roots out of drainage holes']);
+  it('has REMOVED repotting.signs — the structured catalogue is now the single source (D42)', () => {
+    // Spec 5 replaces the free-text list with a per-species catalogue carrying stable ids, bilingual text
+    // and an ordinal evidence class the engine can weight. Keeping the array beside it would be two sources
+    // for one thing. A record still CARRYING the key parses fine — the schema strips unknown keys — but the
+    // parsed record must no longer expose it, or a consumer would keep reading the stale English list.
+    const parsed = repottingSchema.parse({ typicalIntervalMonths: 18, signs: ['Roots out of drainage holes'] });
+    expect(parsed).not.toHaveProperty('signs');
+    expect(parsed.typicalIntervalMonths).toBe(18);
   });
 });
