@@ -7,7 +7,9 @@ import {
   omittedFieldsFor,
   forbiddenFieldsIn,
   permittedTypesFor,
+  requiredFieldsFor,
   assertOmitFieldsAreRealFields,
+  assertRequireFieldsAreRealFields,
 } from './agent-capabilities.js';
 
 describe('the capability map', () => {
@@ -111,6 +113,58 @@ describe('assertOmitFieldsAreRealFields', () => {
   // it meant to withhold would still be fully documented downstream, with no error anywhere.
   it('does not throw against the real map (every omitFields entry is a real field, for every scope)', () => {
     expect(() => assertOmitFieldsAreRealFields()).not.toThrow();
+  });
+});
+
+describe('requireFields — the scope-level "you must always send this" mirror of omitFields', () => {
+  // The five operations that target no EXISTING plant. Written out literally rather than derived, so this
+  // block states the classification independently of anything it is checking; the API's own
+  // `GARDEN_SCOPED_OPS` set is pinned against this same list by a test over there.
+  const GARDEN_SCOPED_OPS = ['place.create', 'place.update', 'city.create', 'city.update', 'plant.create'] as const;
+
+  it('requires plantId of the gardener on EXACTLY its plant-scoped operations — no fewer, no more', () => {
+    // The defect this closes was 11x wider than the single operation it was reported on, so the assertion
+    // is over the whole class, never one instance: `note.create` alone would have passed before AND after
+    // a one-line fix that left the other ten wrong.
+    const expected = permittedTypesFor('gardener').filter(
+      (t) => !(GARDEN_SCOPED_OPS as readonly string[]).includes(t),
+    );
+    const actual = permittedTypesFor('gardener').filter((t) =>
+      requiredFieldsFor('gardener', t).includes('plantId'),
+    );
+    expect(actual).toEqual(expected);
+    expect(actual).toHaveLength(11);
+  });
+
+  it('requires NOTHING of the doctor — its token is the pin, and the field is withheld outright', () => {
+    // The two mechanisms must stay opposite for the same field: withheld from the pinned scope, demanded of
+    // the owner-anchored one. A row that did both would be a doc telling the agent to always send a field
+    // the API refuses — see assertRequireFieldsAreRealFields.
+    for (const t of PROPOSAL_OPERATION_TYPES) {
+      expect(requiredFieldsFor('doctor', t), `doctor / ${t}`).toEqual([]);
+    }
+  });
+
+  it('never requires a field on an operation the scope may not even propose', () => {
+    for (const scope of AGENT_SCOPES) {
+      for (const t of PROPOSAL_OPERATION_TYPES) {
+        if (mayPropose(scope, t)) continue;
+        expect(requiredFieldsFor(scope, t), `${scope} / ${t}`).toEqual([]);
+      }
+    }
+  });
+
+  it('requires nothing on the garden-scoped operations — they address their target by its own id', () => {
+    for (const t of GARDEN_SCOPED_OPS) expect(requiredFieldsFor('gardener', t)).toEqual([]);
+  });
+
+  it('fails closed for an unknown scope, exactly like omittedFieldsFor', () => {
+    const unknownScope = 'nonsense' as unknown as (typeof AGENT_SCOPES)[number];
+    expect(requiredFieldsFor(unknownScope, 'note.create')).toEqual([]);
+  });
+
+  it('assertRequireFieldsAreRealFields does not throw against the real map', () => {
+    expect(() => assertRequireFieldsAreRealFields()).not.toThrow();
   });
 });
 

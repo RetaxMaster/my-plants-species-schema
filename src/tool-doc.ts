@@ -17,6 +17,20 @@ export interface ToolSpec {
    * still advertises `placeId` teaches the agent about a field the API answers with VALIDATION.
    */
   omitFields?: readonly string[];
+  /**
+   * Field keys this tool's audience MUST always supply, even though the shared schema marks them
+   * `.optional()`. Fed from the capability map's `requireFields`, the mirror of `omitFields`.
+   *
+   * ⚠️ THE DEFECT THIS CLOSES, stated plainly so nobody re-introduces it by "simplifying" the renderer back
+   * to the schema alone: the `Required` column used to be computed from the Zod node ONLY. That is wrong by
+   * construction here, because the operation union is SCOPE-AGNOSTIC — one union serves the doctor and the
+   * gardener — while this renderer emits a doc for exactly ONE scope. It already knew the scope (it filters
+   * operations and strips fields through the capability map); the `Required` column simply never consulted
+   * it. Result: all eleven of the gardener's plant-scoped operations documented `plantId` as "optional"
+   * while the API refused the operation without it, twice over. Optionality in a shared schema is a
+   * statement about the UNION; required-ness in a generated doc is a statement about the READER.
+   */
+  requireFields?: readonly string[];
 }
 export interface RenderInput { title: string; intro?: string; tools: ToolSpec[]; invariants: InvariantMap; }
 
@@ -122,7 +136,11 @@ function cell(text: string): string {
  * here reproduces that exact quirk, so the output stays byte-identical for every description-free schema,
  * not only the ones with at least one field — see the plan's Task 7 promise and the regression test below.
  */
-function fieldTable(schema: z.ZodTypeAny, omit: readonly string[] = []): string[] {
+function fieldTable(
+  schema: z.ZodTypeAny,
+  omit: readonly string[] = [],
+  require: readonly string[] = [],
+): string[] {
   const shape = objectShape(schema);
   const entries = Object.entries(shape).filter(([key]) => key !== 'type' && !omit.includes(key));
   const described = entries.some(([, field]) => fieldDescription(field) !== '');
@@ -132,8 +150,13 @@ function fieldTable(schema: z.ZodTypeAny, omit: readonly string[] = []): string[
   const rows = entries.length === 0
     ? ['']
     : entries.map(([key, field]) => {
+        // The scope's own requirement OVERRIDES the schema's optionality — never the reverse. A field the
+        // capability map marks required for this audience is required in this audience's doc, whatever the
+        // shared union says; a field the map says nothing about falls back to the schema, so every existing
+        // doc stays byte-identical until its scope actually gains a `requireFields` entry.
         const { optional } = unwrap(field);
-        const base = `| \`${key}\` | ${describeType(field)} | ${optional ? 'optional' : 'required'} |`;
+        const isRequired = require.includes(key) || !optional;
+        const base = `| \`${key}\` | ${describeType(field)} | ${isRequired ? 'required' : 'optional'} |`;
         return described ? `${base} ${cell(fieldDescription(field))} |` : base;
       });
   return [...header, ...rows];
@@ -191,7 +214,11 @@ export function renderToolDoc(input: RenderInput): string {
     }
     parts.push(`### \`${tool.name}\``, '');
     if (tool.description) parts.push(tool.description, '');
-    parts.push(...fieldTable(tool.schema, tool.omitFields), '');
+    // `requireFields`, like `omitFields`, is TOP-LEVEL ONLY — it is not threaded into `subTables` below.
+    // That is deliberate and not an omission: both sets name keys on the operation object itself (today,
+    // only `plantId`), and a nested object's own members are described by the shared schema alone, where
+    // there is no scope to disagree with.
+    parts.push(...fieldTable(tool.schema, tool.omitFields, tool.requireFields), '');
     parts.push(...subTables(tool.schema, tool.omitFields));
     parts.push('```json', JSON.stringify(exampleForDoc(tool.example, tool.omitFields), null, 2), '```', '');
   }

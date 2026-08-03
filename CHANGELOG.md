@@ -8,6 +8,22 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.21.0
+
+### Fixed
+
+- **The generated agent tool docs no longer tell the gardener that a mandatory field is optional.** Every
+  operation the gardener proposes against one of the owner's plants has to name that plant, and the API
+  refuses it twice over if it does not. The tool reference the gardener actually reads said the opposite —
+  it marked `plantId` "optional" on all eleven of those operations — because the shared doc renderer worked
+  out required-ness from the data contract alone, and the contract has to leave that field optional so the
+  Plant Doctor, which is already pinned to one plant, can leave it out entirely. The result was an agent
+  following its own reference into a request that could never succeed, then having to work out why from the
+  error. Required-ness in a generated reference is now a statement about *the agent reading it*, not about
+  the shared contract: the capability map records which fields each role must supply, the renderer honours
+  it, and a linter fails the build if the map, the generated reference and the hand-written guide ever
+  disagree about a single field.
+
 ## 0.20.0
 
 ### Fixed

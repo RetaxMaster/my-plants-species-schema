@@ -194,6 +194,79 @@ describe('renderToolDoc field omission (spec §4.3)', () => {
   });
 });
 
+// The mirror of the block above. `omitFields` answers "which fields may this audience NOT use"; these answer
+// "which fields must it ALWAYS supply" — a question the shared Zod schema is structurally unable to answer,
+// because one operation union serves every scope while a generated doc serves exactly one.
+describe('renderToolDoc scope-required fields', () => {
+  const plantScoped = z.object({
+    type: z.literal('note.create'),
+    // `.optional()` in the schema — exactly as `plantTarget` is in proposal-operations.ts, and for the same
+    // reason: the doctor must be able to omit it entirely.
+    plantId: z.string().min(1).optional(),
+    body: z.string(),
+  }).strict();
+
+  it('prints `required` for a requireFields key even though the schema marks it optional', () => {
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{
+        name: 'note.create',
+        schema: plantScoped,
+        example: { type: 'note.create', plantId: 'p1', body: 'hi' },
+        requireFields: ['plantId'],
+      }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `plantId` | string | required |');
+    expect(md).not.toContain('| `plantId` | string | optional |');
+  });
+
+  it('leaves the same field `optional` when the scope does not require it — the regression this closes', () => {
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{ name: 'note.create', schema: plantScoped, example: { type: 'note.create', body: 'hi' } }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `plantId` | string | optional |');
+  });
+
+  it('never DOWNGRADES a schema-required field: requireFields adds, it does not subtract', () => {
+    // `body` is required in the schema and absent from requireFields. A naive implementation that read the
+    // require set as the whole truth would flip it to optional and teach the agent it may omit a mandatory
+    // field — the same defect this mechanism exists to fix, pointed the other way.
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{
+        name: 'note.create',
+        schema: plantScoped,
+        example: { type: 'note.create', plantId: 'p1', body: 'hi' },
+        requireFields: ['plantId'],
+      }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).toContain('| `body` | string | required |');
+  });
+
+  it('omission still wins over requirement at the RENDERING level (a contradictory pair is caught upstream)', () => {
+    // `assertRequireFieldsAreRealFields()` refuses a map entry that both omits and requires a field, so this
+    // combination can never reach the renderer from the real capability map. Pinning the renderer's own
+    // behaviour anyway means the two guards cannot disagree about which one is authoritative: a field the
+    // audience may not send is ABSENT from the doc, never present-and-marked-required.
+    const md = renderToolDoc({
+      title: 'Demo',
+      tools: [{
+        name: 'note.create',
+        schema: plantScoped,
+        example: { type: 'note.create', body: 'hi' },
+        omitFields: ['plantId'],
+        requireFields: ['plantId'],
+      }],
+      invariants: { schemaAttached: {}, external: [] },
+    });
+    expect(md).not.toContain('plantId');
+  });
+});
+
 describe('tool-doc renders field descriptions (Spec 3 §5)', () => {
   const noInvariants = { schemaAttached: {}, external: [] };
 
