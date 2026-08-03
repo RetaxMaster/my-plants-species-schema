@@ -30,6 +30,12 @@ changed for whoever depends on this package, not a commit dump.
   radius or the height; `sizeCm` is the ONLY height the care engine reads, so a height recorded only in prose
   is invisible to scheduling). Written so the care engine, the agents, and anyone reading the data model
   understand the intent without guessing or reaching for external docs.
+- **The `care.done` operation now has a REPOT variant with its own required fields.** When `task` is
+  `'REPOT'`, `operationSchema` now REQUIRES `potSizeCm`, `soilMix`, and `charged` on the same operation — and
+  FORBIDS all three (plus `refreshedOn`) on every other task — enforced by a `superRefine` rather than a
+  nested discriminated-union member, since `care.done` stays one flat schema. A `care.done` proposal for a
+  REPOT task with any of the three fields missing, or a non-REPOT `care.done` carrying any of them, is now
+  rejected at validation time instead of reaching the write core.
 
 ## 0.15.0
 
