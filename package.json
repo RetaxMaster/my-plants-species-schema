@@ -70,6 +70,10 @@
       "types": "./dist/agent-kit/db.d.ts",
       "import": "./dist/agent-kit/db.js"
     },
+    "./agent-kit/species-context": {
+      "types": "./dist/agent-kit/species-context.d.ts",
+      "import": "./dist/agent-kit/species-context.js"
+    },
     "./agent-kit/codex-parity": {
       "types": "./dist/agent-kit/codex-parity/index.d.ts",
       "import": "./dist/agent-kit/codex-parity/index.js"
