@@ -8,6 +8,32 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.19.0
+
+### Added
+
+- **The agents' species-context builder now lives here, once.** `buildSpeciesContext` — the function that
+  turns a raw species row into the shape an agent reasons over — is available at
+  `@retaxmaster/my-plants-species-schema/agent-kit/species-context`. It normalizes the record through the
+  contract's own parser (so a legacy English-only row is handed to the agent in the bilingual shape the
+  contract promises, instead of raw), treats an empty or whitespace-only research brief as absent, and
+  enforces that an agent receives the research brief **or** the transitional blogpost fallback, never both.
+  It previously existed as two separate copies, one inside the Plant Doctor and one inside the Gardener;
+  both are gone. One implementation means a correction to how species knowledge is prepared reaches every
+  agent at once, instead of whichever repo somebody remembered to edit.
+
+### Changed
+
+- **Writing a species record now rejects the removed `repotting.signs` field instead of silently dropping
+  it.** Repotting signs moved to their own structured, bilingual catalogue, and the field was taken out of
+  the record. Until now the write path still *accepted* a record that carried it, discarded the value, and
+  reported success — so a curation run could hand over signs, be told everything was fine, and have them
+  vanish. The write path now refuses the record and says where the signs belong. **Reading is unchanged and
+  stays tolerant**: records stored before the move still parse exactly as they did.
+- **Field guidance survives on the write contract.** The per-field descriptions that tell a curating agent
+  what each field expects are now attached to both the reading and the writing contract, so tools generated
+  from the write contract carry the same instructions instead of blank cells.
+
 ## 0.18.0
 
 ### Added
