@@ -157,8 +157,12 @@ const CARE_DONE_REPOT_ONLY_FIELDS = ['potSizeCm', 'soilMix', 'charged'] as const
  *
  * The one thing an agent CANNOT do is resolve an open repot verdict: when the plant has an unresolved
  * REPOT evaluation the write core demands the `evaluationId` of the questionnaire row being answered, and
- * no agent can obtain one — it never runs the owner's questionnaire. That 400 reaches the agent
- * UNMODIFIED, deliberately: "the same conditions the owner has" includes the conditions that stop it.
+ * no agent can obtain one — it never runs the owner's questionnaire. That refusal STANDS unsoftened,
+ * deliberately: "the same conditions the owner has" includes the conditions that stop it. Its WORDING,
+ * however, does not reach the agent verbatim — an earlier version of this line claimed the 400 arrives
+ * "UNMODIFIED" and that was wrong. The API's `classifyFailure` normalises every 400 into one of five
+ * author-written sentences so no internal detail can escape to an agent, which is why both agent guides
+ * pre-warn about this case in PROSE instead of relying on the error text.
  *
  * `postponeToOn` is REQUIRED on the date branch even though the owner's core treats it as optional. The
  * owner's UI always supplies it; an operation that omitted it would record a care event and move nothing.

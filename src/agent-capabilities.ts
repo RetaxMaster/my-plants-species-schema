@@ -67,8 +67,15 @@ export const AGENT_CAPABILITIES: Record<AgentScope, Record<ProposalOperationType
     'care.done': { allowed: true, omitFields: ['plantId'] },
     // The owner's Postpone button, agent-side. Both scopes hold it: the owner's ruling was simply "let the
     // gardener and the doctor mark an activity as postponed themselves." Like every plant-scoped op, the
-    // doctor may not name its target plant. REPOT is absent from this operation's TASK vocabulary (the
-    // schema's `POSTPONABLE_TASKS`), not from this row -- see that constant for why.
+    // doctor may not name its target plant.
+    //
+    // REPOT *is* in this operation's task vocabulary. The previous comment here claimed the opposite and
+    // cited a `POSTPONABLE_TASKS` constant that does not exist anywhere in the workspace. What is actually
+    // true: `care.postpone`'s `task` is `z.enum(FREQUENCY_BEARING_TASKS)` — all six tasks, REPOT included —
+    // and REPOT is simply postponed by REASON rather than by DATE. The shared schema's own `.superRefine()`
+    // enforces that in both directions: on REPOT `reason` is REQUIRED and `postponeToOn` is FORBIDDEN; on
+    // every other task `postponeToOn` is REQUIRED and `reason` is FORBIDDEN. None of that is expressed by
+    // this row -- see `carePostpone` in `proposal-operations.ts`.
     'care.postpone': { allowed: true, omitFields: ['plantId'] },
     // A free-form journal note follows the same plant-scoped asymmetry as progress.create: both roles
     // may add one, and the doctor's `plantId` is withheld exactly like every other plant-scoped op.
