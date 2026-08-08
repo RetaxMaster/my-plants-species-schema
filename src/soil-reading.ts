@@ -13,6 +13,14 @@ export const READING_VERDICTS = ['NONE', 'POSTPONE', 'WATER_NOW'] as const;
 export type ReadingVerdict = (typeof READING_VERDICTS)[number];
 export const readingVerdictEnum = z.enum(READING_VERDICTS);
 
+/** Disambiguates a reading taken on a day the plant was ALSO watered (the owner-ruled ADMIT-and-ASK design,
+ *  2026-08-08): the drying-rate fence is strict-after the last watering, so a same-day row is ambiguous
+ *  about which side of the watering it belongs to. `AFTER` places it as the `w ≈ 1` anchor that opens the
+ *  new cycle; `BEFORE` places it as the final point of the previous cycle. */
+export const WATERING_RELATIONS = ['BEFORE', 'AFTER'] as const;
+export type WateringRelation = (typeof WATERING_RELATIONS)[number];
+export const wateringRelationEnum = z.enum(WATERING_RELATIONS);
+
 export const soilReadingCreateSchema = z
   .object({
     instrumentId: instrumentIdEnum,
@@ -23,6 +31,10 @@ export const soilReadingCreateSchema = z
     verdict: readingVerdictEnum.default('NONE'),
     /** Required by, and ONLY by, a POSTPONE verdict. */
     postponeToOn: strictYmd.optional(),
+    /** Answers "was this taken before or after that day's watering?" — meaningful ONLY on a day the plant
+     *  was watered. Absent means UNKNOWN, never "before": a same-day reading with this field unset is
+     *  excluded from the drying-rate fit rather than guessed onto either side of the watering. */
+    wateringRelation: wateringRelationEnum.optional(),
   })
   .superRefine((v, ctx) => {
     if (v.verdict === 'POSTPONE' && v.postponeToOn === undefined) {

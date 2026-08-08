@@ -8,6 +8,17 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.25.0
+
+### Added
+
+- **`wateringRelation` on a soil reading, and the `WATERING_RELATIONS` vocabulary that backs it.** A reading
+  taken on a day the plant was also watered used to be silently excluded from the drying-rate fit — it is
+  ambiguous about which drying cycle it belongs to. The owner ruled that ambiguity should be resolved by
+  asking, never by assuming: `soilReadingCreateSchema` now accepts an optional `wateringRelation: 'BEFORE'
+  | 'AFTER'` field answering "was this taken before or after that day's watering?" — meaningful only on a
+  watering day, and absent means UNKNOWN, never "before".
+
 ## 0.24.0
 
 ### Added

@@ -4,6 +4,8 @@ import {
   readingKindEnum,
   soilReadingCreateSchema,
   instrumentCalibrationSchema,
+  wateringRelationEnum,
+  WATERING_RELATIONS,
 } from './soil-reading.js';
 import { INSTRUMENT_IDS, READING_KINDS } from './soil-instrument-constants.js';
 
@@ -14,6 +16,14 @@ describe('the Zod layer is DERIVED from the constant arrays (no fork)', () => {
 
   it('derives the kind enum from READING_KINDS', () => {
     expect(readingKindEnum.options).toEqual([...READING_KINDS]);
+  });
+
+  it('derives the watering-relation enum from WATERING_RELATIONS', () => {
+    expect(wateringRelationEnum.options).toEqual([...WATERING_RELATIONS]);
+  });
+
+  it('WATERING_RELATIONS is closed to exactly BEFORE and AFTER', () => {
+    expect(WATERING_RELATIONS).toEqual(['BEFORE', 'AFTER']);
   });
 });
 
@@ -44,6 +54,24 @@ describe('soilReadingCreateSchema', () => {
     expect(
       soilReadingCreateSchema.safeParse({ ...base, verdict: 'WATER_NOW', postponeToOn: '2026-08-12' }).success,
     ).toBe(false);
+  });
+
+  describe('wateringRelation — the same-day-reading disambiguation (owner-ruled, 2026-08-08)', () => {
+    it('is optional — absent means UNKNOWN, and the field is simply not present in the parsed output', () => {
+      const parsed = soilReadingCreateSchema.parse({ ...base });
+      expect(parsed.wateringRelation).toBeUndefined();
+    });
+
+    it('accepts BEFORE and AFTER', () => {
+      expect(soilReadingCreateSchema.safeParse({ ...base, wateringRelation: 'BEFORE' }).success).toBe(true);
+      expect(soilReadingCreateSchema.safeParse({ ...base, wateringRelation: 'AFTER' }).success).toBe(true);
+    });
+
+    it('rejects an unknown value — never silently coerced or dropped', () => {
+      expect(
+        soilReadingCreateSchema.safeParse({ ...base, wateringRelation: 'DURING' }).success,
+      ).toBe(false);
+    });
   });
 });
 
