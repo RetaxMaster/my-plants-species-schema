@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidCalendarDate, strictYmd } from './calendar-date.js';
+import { isNotAfterYmd, isValidCalendarDate, strictYmd } from './calendar-date.js';
 
 describe('isValidCalendarDate', () => {
   it('accepts ordinary calendar dates', () => {
@@ -55,8 +55,6 @@ describe('strictYmd', () => {
     expect(result.success).toBe(false);
   });
 });
-
-import { isNotAfterYmd, strictYmd } from './calendar-date.js';
 
 describe('isNotAfterYmd — the PURE half of the future-date rule (spec §2.4)', () => {
   it('accepts a day before the reference, and the reference day itself', () => {
