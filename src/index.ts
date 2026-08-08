@@ -22,3 +22,5 @@ export * from './idempotency-constants.js';
 export * from './repot-sign-constants.js';
 export * from './repot-sign.js';
 export * from './repot-sign-universal.js';
+export * from './soil-instrument-constants.js';
+export * from './soil-reading.js';
