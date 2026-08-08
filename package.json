@@ -18,6 +18,10 @@
       "types": "./dist/photo-contract-constants.d.ts",
       "import": "./dist/photo-contract-constants.js"
     },
+    "./soil-instrument-constants": {
+      "types": "./dist/soil-instrument-constants.d.ts",
+      "import": "./dist/soil-instrument-constants.js"
+    },
     "./blogpost-constants": {
       "types": "./dist/blogpost-constants.d.ts",
       "import": "./dist/blogpost-constants.js"
