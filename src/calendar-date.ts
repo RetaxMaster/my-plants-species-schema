@@ -38,3 +38,27 @@ export const strictYmd = z
   .string()
   .regex(YMD_SHAPE, 'must be a YYYY-MM-DD calendar date')
   .refine(isValidCalendarDate, { message: 'must be a real calendar date (e.g. not 2026-02-31)' });
+
+/**
+ * True when `value` names a calendar day AT OR BEFORE `reference`.
+ *
+ * DELIBERATELY PURE AND CONTEXT-FREE (spec §2.4). This package cannot know which calendar day "today"
+ * is for a given plant — that depends on the plant's place-city timezone, which only the API can
+ * resolve. So the shared package exports the COMPARISON and nothing else; the API supplies the plant's
+ * own local today and performs the check where plant context exists.
+ *
+ * It is NOT wired into `strictYmd`, and must never be: `care.postpone`'s `postponeToOn` and the moving
+ * feature's `moveOn` are future-BY-DESIGN, and a rule placed in the shared validator would break both.
+ * The rule is a per-FIELD refinement over the named class of PAST-EVENT dates, never a change to the
+ * existence validators every caller shares.
+ *
+ * Zero-padded `YYYY-MM-DD` sorts lexicographically in chronological order, which is why a string
+ * comparison is correct here and no Date is constructed — building Dates would reintroduce exactly the
+ * timezone hazard this project bans. Both sides are validated first: a string that is not a real
+ * calendar date is never "not after" anything (defence in depth — every call site has already run
+ * `strictYmd` or `IsCalendarDate`).
+ */
+export function isNotAfterYmd(value: string, reference: string): boolean {
+  if (!isValidCalendarDate(value) || !isValidCalendarDate(reference)) return false;
+  return value <= reference;
+}

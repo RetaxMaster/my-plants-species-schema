@@ -55,3 +55,37 @@ describe('strictYmd', () => {
     expect(result.success).toBe(false);
   });
 });
+
+import { isNotAfterYmd, strictYmd } from './calendar-date.js';
+
+describe('isNotAfterYmd — the PURE half of the future-date rule (spec §2.4)', () => {
+  it('accepts a day before the reference, and the reference day itself', () => {
+    expect(isNotAfterYmd('2026-08-07', '2026-08-08')).toBe(true);
+    expect(isNotAfterYmd('2026-08-08', '2026-08-08')).toBe(true);
+  });
+
+  it('rejects a day after the reference — including the one-digit year typo this rule exists for', () => {
+    expect(isNotAfterYmd('2026-08-09', '2026-08-08')).toBe(false);
+    expect(isNotAfterYmd('2027-01-15', '2026-08-08')).toBe(false);
+  });
+
+  it('compares CHRONOLOGICALLY across month and year boundaries, not by digit count', () => {
+    expect(isNotAfterYmd('2026-09-02', '2026-10-01')).toBe(true);
+    expect(isNotAfterYmd('2026-12-31', '2027-01-01')).toBe(true);
+    expect(isNotAfterYmd('2027-01-01', '2026-12-31')).toBe(false);
+  });
+
+  it('rejects an impossible or malformed date on either side rather than guessing', () => {
+    expect(isNotAfterYmd('2026-02-31', '2026-08-08')).toBe(false);
+    expect(isNotAfterYmd('2026-8-8', '2026-08-08')).toBe(false);
+    expect(isNotAfterYmd('2026-08-07', 'not-a-date')).toBe(false);
+  });
+
+  // The LAYERING, asserted rather than assumed (spec §2.4): `strictYmd` validates EXISTENCE for every
+  // caller — including `care.postpone`'s postponeToOn and moving's moveOn, which are future-by-design.
+  // Plausibility is a SEPARATE, per-field rule, and this is the test that stops someone "fixing"
+  // strictYmd to reject the future and silently breaking both.
+  it('strictYmd still ACCEPTS a real future date — existence is not plausibility', () => {
+    expect(strictYmd.safeParse('2099-01-15').success).toBe(true);
+  });
+});
