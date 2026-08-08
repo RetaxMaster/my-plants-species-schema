@@ -8,6 +8,35 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.24.0
+
+### Added
+
+- **The soil-instrument property table.** Two instruments are modelled now — a galvanic probe (a 1–10
+  index, comparable only to itself) and a kitchen scale (open-ended grams) — each as one row declaring its
+  unit, its raw scale, which direction on that scale means "wetter", whether its readings can be compared
+  across pots, and whether it needs a per-pot calibration before it means anything. Consumers never special-
+  case a device: the row says what the instrument is, and the engine only ever sees the normalised result
+  below. It ships Zod-free at the new `./soil-instrument-constants` subpath, so the web can read it without
+  pulling Zod into its bundle.
+- **The soil reading and per-pot calibration contract.** A reading (`soilReadingCreateSchema`) records which
+  instrument was used, the raw value it showed, the day it was taken, and — the point of measuring at all —
+  what the owner decided from it: nothing, postpone watering, or water now, with the postponement date
+  required exactly when the verdict is `POSTPONE` and forbidden otherwise. A raw value only means something
+  once it is placed against this pot's own wet and dry anchors, so the kitchen scale's calibration
+  (`instrumentCalibrationSchema`) carries a saturated value and a dry value, and rejects a calibration where
+  the "wet" anchor is not actually wetter than the "dry" one.
+- **Two new WATER feedback reasons for a verdict backed by an actual reading:** `dry-soil-measured` (an
+  early watering justified by measurement) and `soil-still-moist-measured` (a postponement justified by
+  measurement). Both are recorded on the plant's history exactly like their un-measured counterparts, but
+  are deliberately kept out of the watering learning loop — the justified-reason constants still point only
+  at the plain `dry-soil`/`soil-still-moist` slugs, so a measured verdict is never double-counted against
+  the drying-rate signal the measurement already feeds into the engine through its own channel.
+- **A shared, context-free `isNotAfterYmd(value, reference)` calendar comparison**, for enforcing that a
+  past-event date (a repot, a substrate refresh) was not recorded in the future. It stays deliberately
+  separate from the base date validator, since other fields — a postponement's target date, a planned
+  move — are future-by-design and must keep accepting them.
+
 ## 0.22.0
 
 ### Added
