@@ -10,13 +10,15 @@
 // Reason the owner watered BEFORE the task was due (an "early" DONE on WATER). Ordered unjustified →
 // justified. `dry-soil` is the JUSTIFIED reason (the soil really was dry → the plant drinks faster →
 // water sooner); `intuition` is recorded but must NOT move the cadence (fixes today's blind shortening).
-export const EARLY_WATER_REASONS = ['intuition', 'dry-soil'] as const;
+export const EARLY_WATER_REASONS = ['intuition', 'dry-soil', 'dry-soil-measured'] as const;
 export type EarlyWaterReason = (typeof EARLY_WATER_REASONS)[number];
 
 // Reason the owner postponed a due/overdue WATER task. `soil-still-moist` is the JUSTIFIED reason (the
 // soil is still wet → the plant needs water less often → water later); `no-time`/`other` are recorded but
 // must NOT move the cadence.
-export const WATER_POSTPONE_REASONS = ['soil-still-moist', 'no-time', 'other'] as const;
+export const WATER_POSTPONE_REASONS = [
+  'soil-still-moist', 'no-time', 'other', 'soil-still-moist-measured',
+] as const;
 export type WaterPostponeReason = (typeof WATER_POSTPONE_REASONS)[number];
 
 // The union of every WATER feedback reason — the coarse allow-list the API DTO validates against with a
@@ -31,6 +33,35 @@ export type WaterFeedbackReason = (typeof WATER_FEEDBACK_REASONS)[number];
 // references them by name — never a re-typed string literal (fork-safe).
 export const JUSTIFIED_EARLY_WATER_REASON = 'dry-soil' satisfies EarlyWaterReason;
 export const JUSTIFIED_POSTPONE_REASON = 'soil-still-moist' satisfies WaterPostponeReason;
+
+// ---- MEASURED counterparts (spec §4.8) ---------------------------------------------------------------
+// A measurement-derived verdict is RECORDED — for the owner's record, for the reading series, and so the
+// history reads honestly — but it must NOT feed the watering learning loop. The drying-rate factor is the
+// measurement's SOLE engine channel; routing it through both would count one observation twice in the same
+// `optionalFactor`, and feeding it into the last-10 window is precisely the accumulating nudge the design
+// rejects.
+//
+// The exclusion is STRUCTURAL, not a special case somebody must remember: `deriveFeedback` selects
+// justified events by EXACT equality against JUSTIFIED_EARLY_WATER_REASON / JUSTIFIED_POSTPONE_REASON, so a
+// DISTINCT slug is excluded from both the net step and the justified count with no change to that function
+// and no migration (reason slugs are persisted verbatim into CareEvent.payload, which is JSON).
+//
+// These slugs are written ONLY by the measuring flow, in the same transaction that writes the reading, so
+// they can never be claimed by a caller that measured nothing.
+export const MEASURED_EARLY_WATER_REASON = 'dry-soil-measured' satisfies EarlyWaterReason;
+export const MEASURED_POSTPONE_REASON = 'soil-still-moist-measured' satisfies WaterPostponeReason;
+
+/** Both measured slugs, named so no consumer re-types a literal (fork-safe). */
+export const MEASURED_WATER_REASONS = [
+  MEASURED_EARLY_WATER_REASON,
+  MEASURED_POSTPONE_REASON,
+] as const satisfies readonly WaterFeedbackReason[];
+
+/** True for a measured slug. Used by the API's feedback-window builder to keep a measured event from even
+ *  OCCUPYING a slot in the last-10 window — see the API-side note in the drying-rate work. */
+export function isMeasuredWaterReason(reason: string | null | undefined): boolean {
+  return reason != null && (MEASURED_WATER_REASONS as readonly string[]).includes(reason);
+}
 
 // ---- REPOT inspection reasons (spec F.3) --------------------------------------------------------------
 // REPOT is an INSPECTION, not a scheduled action: the owner opens the pot, looks, and reports one of three
