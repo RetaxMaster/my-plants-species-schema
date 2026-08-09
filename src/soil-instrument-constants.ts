@@ -183,8 +183,26 @@ export const INSTRUMENT_LIST: readonly InstrumentRow[] = INSTRUMENT_IDS.map((id)
  * without this, three wooden-stick readings could outrank a kitchen scale that records the real noise of
  * the world. The cap itself is an engine concern and lives there with its own care-engine ledger row; only
  * the physical fact lives here.
+ *
+ * THROWS, rather than returning a bogus number, when the row itself is malformed — `rawStep <= 0` (which
+ * would divide by zero or a negative step) or a closed `rawMax` below `rawMin` (which would produce a
+ * negative count). `soil-reading.ts`'s `superRefine` only validates that a *reading* falls within a row's
+ * bounds; nothing validates the row shape itself at runtime, so this function is the last checkpoint before
+ * the result is multiplied into a confidence ceiling. It cannot return `null` for this case either: `null`
+ * already means "open-ended and continuous", and overloading it with "malformed" would make an honest
+ * open-ended answer indistinguishable from a broken row to every caller. Same shape of contract as
+ * `composeAndValidateRepotSignId` in `repot-sign-constants.ts` — a composed/derived value nothing downstream
+ * re-checks must refuse to exist rather than silently carry a bad input forward.
  */
 export function resolutionStates(row: InstrumentRow): number | null {
+  if (row.rawStep <= 0) {
+    throw new Error(`instrument "${row.id}" has a non-positive rawStep (${row.rawStep}); cannot derive resolution`);
+  }
   if (row.rawMax === null) return null;
+  if (row.rawMax < row.rawMin) {
+    throw new Error(
+      `instrument "${row.id}" has rawMax (${row.rawMax}) below rawMin (${row.rawMin}); cannot derive resolution`,
+    );
+  }
   return Math.floor((row.rawMax - row.rawMin) / row.rawStep) + 1;
 }

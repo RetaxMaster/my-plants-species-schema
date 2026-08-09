@@ -6,6 +6,7 @@ import {
   READING_KINDS,
   resolutionStates,
   type InstrumentId,
+  type InstrumentRow,
 } from './soil-instrument-constants.js';
 
 describe('the instrument property table', () => {
@@ -160,20 +161,48 @@ describe('the instrument property table', () => {
       expect(resolutionStates(INSTRUMENTS['kitchen-scale'])).toBeNull();
     });
 
-    // The whole point of deriving rather than declaring: an instrument's precision cannot contradict the
-    // scale it publishes, because there is only one place the fact lives.
-    it('follows the row\'s own bounds for every instrument in the table', () => {
+    // Every closed-scale row reports AT LEAST two states: an instrument with only one state can never
+    // report a change at all, so it could never yield a drying slope. This is a property of the RESULT,
+    // independent of the formula that produced it.
+    it('reports at least two states for every closed-scale row', () => {
       for (const row of INSTRUMENT_LIST) {
-        const expected = row.rawMax === null
-          ? null
-          : Math.floor((row.rawMax - row.rawMin) / row.rawStep) + 1;
-        expect(resolutionStates(row)).toBe(expected);
+        if (row.rawMax === null) continue;
+        expect(resolutionStates(row)!).toBeGreaterThanOrEqual(2);
+      }
+    });
+
+    // The count round-trips against the scale it was derived from, checked from the OTHER direction:
+    // walking `states - 1` steps of `rawStep` from `rawMin` must land exactly on `rawMax`. This does not
+    // restate how the count was computed, so a wrong formula pasted into both the implementation and a
+    // test could not fool it.
+    it('round-trips the derived count against the row\'s own bounds', () => {
+      for (const row of INSTRUMENT_LIST) {
+        if (row.rawMax === null) continue;
+        const states = resolutionStates(row)!;
+        expect(row.rawMin + (states - 1) * row.rawStep).toBe(row.rawMax);
       }
     });
 
     it('a finer instrument reports more states than a coarser one', () => {
       expect(resolutionStates(INSTRUMENTS['galvanic-probe'])!)
         .toBeGreaterThan(resolutionStates(INSTRUMENTS['wooden-stick'])!);
+    });
+
+    // A row nothing at runtime validates the shape of (soil-reading.ts's superRefine only checks a
+    // READING against the row's bounds, never the row itself) must not be able to silently poison the
+    // engine's confidence ceiling with NaN/Infinity/a negative count. Same contract as
+    // composeAndValidateRepotSignId in repot-sign-constants.ts: refuse to exist rather than carry a bad
+    // input forward.
+    it('throws for a non-positive rawStep, naming the row and the offending value', () => {
+      const malformed: InstrumentRow = { ...INSTRUMENTS['galvanic-probe'], rawStep: 0 };
+      expect(() => resolutionStates(malformed)).toThrow(/galvanic-probe/);
+      expect(() => resolutionStates(malformed)).toThrow(/rawStep/);
+    });
+
+    it('throws when rawMax is below rawMin, naming the row and the offending values', () => {
+      const malformed: InstrumentRow = { ...INSTRUMENTS['wooden-stick'], rawMax: 0 };
+      expect(() => resolutionStates(malformed)).toThrow(/wooden-stick/);
+      expect(() => resolutionStates(malformed)).toThrow(/rawMax/);
     });
   });
 });
