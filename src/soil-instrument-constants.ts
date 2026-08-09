@@ -17,11 +17,12 @@
 export const READING_KINDS = ['moisture'] as const;
 export type ReadingKind = (typeof READING_KINDS)[number];
 
-/** BUILT NOW: one arbitrary-relative instrument and one mass-relative one. Two is what makes this
- *  abstraction exercised rather than speculative — they force every property below to be real. Capacitive
+/** BUILT NOW: two numeric instruments (one arbitrary-relative, one mass-relative) and two ordinal ones that
+ *  read the same three-state observation at a different depth. Four is what makes this abstraction exercised
+ *  rather than speculative — they force every property below to be real, on both capture kinds. Capacitive
  *  (% VWC, comparable across pots) and tensiometer (kPa, HIGHER = DRIER) are a row each, later, with no
  *  engine change: the tensiometer's inverted direction resolves entirely inside its normaliser. */
-export const INSTRUMENT_IDS = ['galvanic-probe', 'kitchen-scale'] as const;
+export const INSTRUMENT_IDS = ['galvanic-probe', 'kitchen-scale', 'wooden-stick', 'finger'] as const;
 export type InstrumentId = (typeof INSTRUMENT_IDS)[number];
 
 /** Which end of the raw scale means WET. `higher-is-drier` exists for the tensiometer row that is not built
@@ -119,6 +120,44 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     requiresCalibration: true,
     rawMin: 0,
     rawMax: null,
+    rawStep: 1,
+  },
+  /** Free — no hardware to own, so no owner is gated out of measuring by it. The reading is not a number: the
+   *  stick is pushed to the bottom of the pot, pulled out, and the owner picks one of three named states
+   *  ("comes out clean" / "a little dry soil clings" / "damp soil sticks to it"), which is why `captureKind`
+   *  is `ordinal` and `rawValue` carries the LEVEL (1..3), not a measurement. */
+  'wooden-stick': {
+    id: 'wooden-stick',
+    kind: 'moisture',
+    unit: 'level',
+    scale: 'stick-clean-to-damp',
+    direction: 'higher-is-wetter',
+    protocolKind: 'insertion',
+    captureKind: 'ordinal',
+    comparableAcrossPots: false,
+    requiresCalibration: false,
+    rawMin: 1,
+    rawMax: 3,
+    rawStep: 1,
+  },
+  /** The same three-state observation as the wooden stick, taken with no instrument at all. It is a SEPARATE
+   *  row rather than an alias because it reaches a different depth: a stick goes to the bottom of the pot,
+   *  a finger reaches about 3 cm — and deeper soil is wetter, so the two are reading different zones. Giving
+   *  them the same row would have the app instruct a finger owner to judge soil at a depth their finger
+   *  never touches, and would prevent the stick and the finger from ever carrying different protocols or
+   *  different engine ceilings later. */
+  finger: {
+    id: 'finger',
+    kind: 'moisture',
+    unit: 'level',
+    scale: 'finger-dry-to-damp',
+    direction: 'higher-is-wetter',
+    protocolKind: 'insertion',
+    captureKind: 'ordinal',
+    comparableAcrossPots: false,
+    requiresCalibration: false,
+    rawMin: 1,
+    rawMax: 3,
     rawStep: 1,
   },
 };

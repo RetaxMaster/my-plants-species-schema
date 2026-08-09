@@ -8,8 +8,8 @@ import {
 } from './soil-instrument-constants.js';
 
 describe('the instrument property table', () => {
-  it('is a CLOSED list of the two rows built now (capacitive/tensiometer join later, no engine change)', () => {
-    expect(INSTRUMENT_IDS).toEqual(['galvanic-probe', 'kitchen-scale']);
+  it('is a CLOSED list of the four rows built now (capacitive/tensiometer join later, no engine change)', () => {
+    expect(INSTRUMENT_IDS).toEqual(['galvanic-probe', 'kitchen-scale', 'wooden-stick', 'finger']);
   });
 
   it('carries a row for EVERY id, keyed by that id — never a case per device', () => {
@@ -77,7 +77,7 @@ describe('the instrument property table', () => {
       expect(row.protocolKind === 'insertion' || row.protocolKind === 'whole-pot-mass').toBe(true);
     }
     expect(INSTRUMENT_LIST.filter((r) => r.protocolKind === 'insertion').map((r) => r.id))
-      .toEqual(['galvanic-probe']);
+      .toEqual(['galvanic-probe', 'wooden-stick', 'finger']);
   });
 
   it('types an unknown id out of existence', () => {
@@ -85,17 +85,66 @@ describe('the instrument property table', () => {
     const bad: InstrumentId = 'tensiometer';
     expect(bad).toBe('tensiometer');
   });
-});
 
-describe('captureKind — how the owner supplies a reading', () => {
   it('is declared on every row, so no consumer has to branch on the id', () => {
     for (const row of INSTRUMENT_LIST) {
-      expect(row.captureKind === 'numeric' || row.captureKind === 'ordinal').toBe(true);
+      expect(['numeric', 'ordinal']).toContain(row.captureKind);
     }
   });
 
-  it('the two instruments built in 2026-08 are numeric', () => {
+  it('the two numeric instruments built in 2026-08 are numeric', () => {
     expect(INSTRUMENTS['galvanic-probe'].captureKind).toBe('numeric');
     expect(INSTRUMENTS['kitchen-scale'].captureKind).toBe('numeric');
+  });
+
+  describe('the wooden stick — an ordinal instrument that costs nothing', () => {
+    it('is a row like any other', () => {
+      const row = INSTRUMENTS['wooden-stick'];
+      expect(row.kind).toBe('moisture');
+      expect(row.captureKind).toBe('ordinal');
+      expect(row.direction).toBe('higher-is-wetter');
+    });
+
+    it('is pushed INTO the medium, so it follows the insertion protocol', () => {
+      expect(INSTRUMENTS['wooden-stick'].protocolKind).toBe('insertion');
+    });
+
+    it('needs NO calibration — its levels are defined by the observation, not by this pot', () => {
+      expect(INSTRUMENTS['wooden-stick'].requiresCalibration).toBe(false);
+    });
+
+    it('carries exactly three levels on a closed 1..3 scale', () => {
+      const row = INSTRUMENTS['wooden-stick'];
+      expect(row.rawMin).toBe(1);
+      expect(row.rawMax).toBe(3);
+      expect(row.rawStep).toBe(1);
+    });
+
+    it('does NOT compare across pots — the same stick in two pots means two different things', () => {
+      expect(INSTRUMENTS['wooden-stick'].comparableAcrossPots).toBe(false);
+    });
+  });
+
+  describe('the finger — the same observation, a different zone', () => {
+    it('is an ordinal insertion instrument needing no calibration', () => {
+      const row = INSTRUMENTS['finger'];
+      expect(row.captureKind).toBe('ordinal');
+      expect(row.protocolKind).toBe('insertion');
+      expect(row.requiresCalibration).toBe(false);
+    });
+
+    it('carries the same three levels as the stick — the observation is identical', () => {
+      expect(INSTRUMENTS['finger'].rawMin).toBe(1);
+      expect(INSTRUMENTS['finger'].rawMax).toBe(3);
+    });
+
+    // The reason the two are separate rows rather than one. A stick reaches the bottom of the pot; a finger
+    // reaches about 3 cm. Deep soil is wetter, so these measure DIFFERENT ZONES and must be able to carry
+    // different protocols and different engine ceilings. Merging them would have the app instruct a finger
+    // owner to measure at a depth only a stick reaches.
+    it('is a DISTINCT row from the wooden stick, never an alias', () => {
+      expect(INSTRUMENTS['finger'].id).not.toBe(INSTRUMENTS['wooden-stick'].id);
+      expect(INSTRUMENTS['finger'].scale).not.toBe(INSTRUMENTS['wooden-stick'].scale);
+    });
   });
 });
