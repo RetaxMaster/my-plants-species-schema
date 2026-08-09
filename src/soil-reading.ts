@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { strictYmd } from './calendar-date.js';
-import { INSTRUMENT_IDS, READING_KINDS } from './soil-instrument-constants.js';
+import { INSTRUMENT_IDS, INSTRUMENTS, READING_KINDS } from './soil-instrument-constants.js';
 
 // The Zod layer over the instrument property table. Both enums are DERIVED from the Zod-free arrays, so the
 // arrays stay the single source of truth and the vocabulary can never fork.
@@ -37,6 +37,38 @@ export const soilReadingCreateSchema = z
     wateringRelation: wateringRelationEnum.optional(),
   })
   .superRefine((v, ctx) => {
+    // ⚠️ THE RAW VALUE MUST LIE ON THE INSTRUMENT'S OWN DECLARED SCALE (QA finding F5, 2026-08-08).
+    //
+    // `rawValue` used to be validated as nothing more than a finite number, so `99`, `-50` and `1e9` were
+    // all accepted with a 201 on a probe whose printed scale is 1–10. The `[0,1]` wetness invariant still
+    // held — `normaliseReading` clamps — and that is exactly what made it dangerous: the owner's own record
+    // then stores a raw observation they could not have made, normalised into a perfectly legal fraction
+    // that the estimator treats as a real anchor. `docs/care-engine.md` §7.20.2 keeps the clamp as the
+    // honest treatment of a reading that is merely NEAR the edge of its scale (a pot weighed with its
+    // saucer, a plant that grew); it was never a licence to ACCEPT a value off the scale entirely.
+    //
+    // The bounds come from the instrument row itself — never a second, hand-written copy per surface — so
+    // adding the capacitive/tensiometer rows extends this check with no edit here. `rawMax === null` is
+    // OPEN-ENDED by contract (grams), so only the lower bound binds for the kitchen scale; a negative mass
+    // is still refused, which is the whole point of the row declaring `rawMin: 0`.
+    //
+    // Shared, so BOTH layers enforce it: this schema validates the owner's HTTP body at the API edge and is
+    // the same module the web imports its bounds from. Browser-only validation is precisely the class A4
+    // exists to eliminate.
+    const row = INSTRUMENTS[v.instrumentId];
+    if (row !== undefined) {
+      const belowMin = v.rawValue < row.rawMin;
+      const aboveMax = row.rawMax !== null && v.rawValue > row.rawMax;
+      if (belowMin || aboveMax) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['rawValue'],
+          message:
+            `rawValue ${v.rawValue} is outside the ${v.instrumentId} scale ` +
+            `(${row.rawMin}..${row.rawMax ?? 'open-ended'})`,
+        });
+      }
+    }
     if (v.verdict === 'POSTPONE' && v.postponeToOn === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

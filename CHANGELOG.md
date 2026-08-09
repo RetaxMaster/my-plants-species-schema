@@ -8,6 +8,26 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+## 0.26.0
+
+### Added
+
+- **`InstrumentRow.protocolKind` (`'insertion' | 'whole-pot-mass'`).** Says HOW a reading with that
+  instrument is physically taken, so a consumer never has to branch on the instrument id to decide which
+  measuring protocol to show. The galvanic probe is `insertion` (a depth and a distance from the pot's
+  centre are meaningful); the kitchen scale is `whole-pot-mass` (neither is). This exists because the web
+  was printing the insertion protocol — "insert to about 8 cm deep" — for a kitchen scale.
+
+### Changed
+
+- **`soilReadingCreateSchema` now range-checks `rawValue` against the instrument's own declared scale.** It
+  previously accepted any finite number, so `99` and `-50` were valid readings on a 1–10 probe and were
+  silently clamped into a legal `[0,1]` wetness downstream — a fabricated anchor inside a legal range. The
+  bounds are read from the instrument row, so adding a row extends the check with no edit here, and
+  `rawMax: null` stays genuinely open-ended (only the `rawMin` floor binds for the kitchen scale).
+  **Consumers that were relying on out-of-scale values being accepted will now see a validation error**
+  naming the field, the instrument and its real bounds.
+
 ## 0.25.0
 
 ### Added

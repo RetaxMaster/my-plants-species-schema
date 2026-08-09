@@ -7,7 +7,7 @@ import {
   wateringRelationEnum,
   WATERING_RELATIONS,
 } from './soil-reading.js';
-import { INSTRUMENT_IDS, READING_KINDS } from './soil-instrument-constants.js';
+import { INSTRUMENT_IDS, INSTRUMENT_LIST, READING_KINDS } from './soil-instrument-constants.js';
 
 describe('the Zod layer is DERIVED from the constant arrays (no fork)', () => {
   it('derives the instrument enum from INSTRUMENT_IDS', () => {
@@ -40,6 +40,56 @@ describe('soilReadingCreateSchema', () => {
 
   it('rejects a non-finite raw value', () => {
     expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: Number.NaN }).success).toBe(false);
+  });
+
+  // QA finding F5 (2026-08-08): `99`, `-50` and `1e9` all returned 201 on a 1–10 probe. The `[0,1]` wetness
+  // invariant held by CLAMPING — and a clamped anchor is a fabricated one in the owner's own record.
+  describe('rawValue must lie on the instrument\'s own declared scale (QA F5)', () => {
+    it('rejects a value ABOVE the probe\'s printed ceiling', () => {
+      expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: 99 }).success).toBe(false);
+      expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: 1e9 }).success).toBe(false);
+    });
+
+    it('rejects a value BELOW the probe\'s printed floor, including a negative one', () => {
+      expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: 0 }).success).toBe(false);
+      expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: -50 }).success).toBe(false);
+    });
+
+    it('accepts both endpoints — the bound is INCLUSIVE, a reading of exactly 1 or 10 is real', () => {
+      expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: 1 }).success).toBe(true);
+      expect(soilReadingCreateSchema.safeParse({ ...base, rawValue: 10 }).success).toBe(true);
+    });
+
+    it('leaves an OPEN-ENDED scale open: grams have no ceiling, so only the floor binds', () => {
+      const scale = { instrumentId: 'kitchen-scale', measuredOn: '2026-08-08' } as const;
+      expect(soilReadingCreateSchema.safeParse({ ...scale, rawValue: 1_000_000 }).success).toBe(true);
+      expect(soilReadingCreateSchema.safeParse({ ...scale, rawValue: 0 }).success).toBe(true);
+      // …but a negative mass is not a reading anybody took.
+      expect(soilReadingCreateSchema.safeParse({ ...scale, rawValue: -1 }).success).toBe(false);
+    });
+
+    it('names the offending field and the real bounds, so the client can say something useful', () => {
+      const parsed = soilReadingCreateSchema.safeParse({ ...base, rawValue: 99 });
+      expect(parsed.success).toBe(false);
+      if (parsed.success) return;
+      const issue = parsed.error.issues.find((i) => i.path[0] === 'rawValue');
+      expect(issue).toBeDefined();
+      expect(issue!.message).toContain('galvanic-probe');
+      expect(issue!.message).toContain('1..10');
+    });
+
+    it('reads its bounds from the instrument ROW, so every row is covered without a hand-written list', () => {
+      for (const row of INSTRUMENT_LIST) {
+        const ok = { instrumentId: row.id, rawValue: row.rawMin, measuredOn: '2026-08-08' };
+        expect(soilReadingCreateSchema.safeParse(ok).success).toBe(true);
+        const low = { instrumentId: row.id, rawValue: row.rawMin - 1, measuredOn: '2026-08-08' };
+        expect(soilReadingCreateSchema.safeParse(low).success).toBe(false);
+        if (row.rawMax !== null) {
+          const high = { instrumentId: row.id, rawValue: row.rawMax + 1, measuredOn: '2026-08-08' };
+          expect(soilReadingCreateSchema.safeParse(high).success).toBe(false);
+        }
+      }
+    });
   });
 
   it('rejects a malformed calendar date (strictYmd, the shared existence check)', () => {

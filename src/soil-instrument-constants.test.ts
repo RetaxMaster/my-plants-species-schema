@@ -57,6 +57,29 @@ describe('the instrument property table', () => {
     for (const row of INSTRUMENT_LIST) expect(row.comparableAcrossPots).toBe(false);
   });
 
+  // QA finding F2 (2026-08-08): the measuring protocol is a PROPERTY OF THE ROW. Before this field the app
+  // printed the insertion protocol ("insert to about 8 cm deep") for the kitchen scale.
+  it('declares HOW a reading is taken, per row — an insertion probe and a whole-pot mass are not the same act', () => {
+    expect(INSTRUMENTS['galvanic-probe'].protocolKind).toBe('insertion');
+    expect(INSTRUMENTS['kitchen-scale'].protocolKind).toBe('whole-pot-mass');
+  });
+
+  it('gives EVERY row a protocol kind, so no surface has to fall back to a default that would be wrong', () => {
+    for (const row of INSTRUMENT_LIST) {
+      expect(['insertion', 'whole-pot-mass']).toContain(row.protocolKind);
+    }
+  });
+
+  it('never declares a whole-pot-mass instrument as needing insertion depth: the two are mutually exclusive', () => {
+    // The pairing that matters downstream — a `whole-pot-mass` row must never be rendered with a depth, and
+    // the only thing that can make that true is that no row claims both.
+    for (const row of INSTRUMENT_LIST) {
+      expect(row.protocolKind === 'insertion' || row.protocolKind === 'whole-pot-mass').toBe(true);
+    }
+    expect(INSTRUMENT_LIST.filter((r) => r.protocolKind === 'insertion').map((r) => r.id))
+      .toEqual(['galvanic-probe']);
+  });
+
   it('types an unknown id out of existence', () => {
     // @ts-expect-error 'tensiometer' is not a row yet
     const bad: InstrumentId = 'tensiometer';

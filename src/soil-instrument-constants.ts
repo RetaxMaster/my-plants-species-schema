@@ -28,6 +28,27 @@ export type InstrumentId = (typeof INSTRUMENT_IDS)[number];
  *  yet, and is named here so the normaliser contract is already total rather than retrofitted. */
 export type InstrumentDirection = 'higher-is-wetter' | 'higher-is-drier';
 
+/**
+ * HOW the owner physically takes a reading with this instrument — a PROPERTY OF THE ROW, never a case per
+ * device in the UI (QA finding F2, 2026-08-08).
+ *
+ * The measuring protocol is not decoration: whatever makes a series comparable to itself has to be repeated
+ * identically every time, and WHAT has to be repeated depends on the instrument. An insertion probe's
+ * repeatable act is a fixed depth and position (deeper soil is wetter, so a varying depth manufactures a
+ * trend that does not exist); a whole-pot mass reading has no depth at all — its repeatable act is weighing
+ * the same object the same way (same saucer on or off, no standing water in the tray).
+ *
+ * Before this field existed the app printed the INSERTION protocol — "insert to about 8 cm deep" — for the
+ * kitchen scale, in the prominent alert, with the real weighing note demoted below it. That is the same
+ * defect class this whole feature exists to delete: a claim published that does not describe what the app
+ * is actually doing. The row now declares which protocol applies, and every surface reads it from here.
+ *
+ * `insertion` — the reading is taken by pushing the instrument INTO the medium; depth and distance from the
+ *   centre are meaningful and are computed from the pot's own diameter.
+ * `whole-pot-mass` — the reading is a property of the WHOLE pot; depth and distance are meaningless for it.
+ */
+export type InstrumentProtocolKind = 'insertion' | 'whole-pot-mass';
+
 export interface InstrumentRow {
   id: InstrumentId;
   kind: ReadingKind;
@@ -37,6 +58,9 @@ export interface InstrumentRow {
    *  tell which scale a historical number was on. */
   scale: string;
   direction: InstrumentDirection;
+  /** How a reading is physically taken — see `InstrumentProtocolKind`. Drives which measuring protocol the
+   *  measuring modal states; the per-pot depth/distance numbers are only meaningful for `insertion`. */
+  protocolKind: InstrumentProtocolKind;
   /** Whether two pots' raw readings mean the same thing. FALSE for both rows built today: a cheap galvanic
    *  probe measures CONDUCTIVITY, not water, and a pot's mass depends on the pot. This is a property of the
    *  instrument, never a law wired into the engine. */
@@ -58,6 +82,7 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     unit: 'index',
     scale: 'probe-1-10',
     direction: 'higher-is-wetter',
+    protocolKind: 'insertion',
     comparableAcrossPots: false,
     requiresCalibration: false,
     rawMin: 1,
@@ -70,6 +95,7 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     unit: 'g',
     scale: 'pot-mass-grams',
     direction: 'higher-is-wetter',
+    protocolKind: 'whole-pot-mass',
     comparableAcrossPots: false,
     requiresCalibration: true,
     rawMin: 0,
