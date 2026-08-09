@@ -53,7 +53,7 @@ describe('the instrument property table', () => {
     expect(INSTRUMENTS['kitchen-scale'].requiresCalibration).toBe(true);
   });
 
-  it('records that NEITHER instrument built today is comparable across pots (spec §4.5)', () => {
+  it('records that NONE of the four instruments built today is comparable across pots (spec §4.5)', () => {
     for (const row of INSTRUMENT_LIST) expect(row.comparableAcrossPots).toBe(false);
   });
 

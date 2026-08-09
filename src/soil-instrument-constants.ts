@@ -79,9 +79,14 @@ export interface InstrumentRow {
   /** How the owner supplies a reading — see `InstrumentCaptureKind`. Drives whether the measuring modal
    *  renders a number field or a choice control. */
   captureKind: InstrumentCaptureKind;
-  /** Whether two pots' raw readings mean the same thing. FALSE for both rows built today: a cheap galvanic
-   *  probe measures CONDUCTIVITY, not water, and a pot's mass depends on the pot. This is a property of the
-   *  instrument, never a law wired into the engine. */
+  /** Whether two pots' raw readings mean the same thing. FALSE for all four rows built today, for TWO
+   *  different reasons depending on the instrument. For the probe and the scale it is PHYSICAL: a cheap
+   *  galvanic probe measures CONDUCTIVITY, not water, and a pot's mass depends on the pot itself. For the
+   *  stick and the finger it is that the reading is a SUBJECTIVE judgement with no fixed physical reference —
+   *  "damp soil sticks to it" depends on the soil, the observer and the day, so the same level in two pots is
+   *  not the same wetness. Both reasons land on the same boolean, but they are not the same claim, and a
+   *  future normaliser must not assume they are. This is a property of the instrument, never a law wired
+   *  into the engine. */
   comparableAcrossPots: boolean;
   /** Whether this instrument needs a per-(plant, instrument) calibration before it can be normalised.
    *  TRUE for the scale (grams are meaningless without this pot's own saturated and dry anchors). */
@@ -140,12 +145,12 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     rawMax: 3,
     rawStep: 1,
   },
-  /** The same three-state observation as the wooden stick, taken with no instrument at all. It is a SEPARATE
-   *  row rather than an alias because it reaches a different depth: a stick goes to the bottom of the pot,
-   *  a finger reaches about 3 cm — and deeper soil is wetter, so the two are reading different zones. Giving
-   *  them the same row would have the app instruct a finger owner to judge soil at a depth their finger
-   *  never touches, and would prevent the stick and the finger from ever carrying different protocols or
-   *  different engine ceilings later. */
+  /** The same three-LEVEL shape as the wooden stick, taken with no instrument at all: level 1 "it feels dry",
+   *  level 2 "barely damp", level 3 "clearly damp". It is a SEPARATE row rather than an alias because it
+   *  reaches a different depth: a stick goes to the bottom of the pot, a finger reaches about 3 cm — and
+   *  deeper soil is wetter, so the two are reading different zones. Giving them the same row would have the
+   *  app instruct a finger owner to judge soil at a depth their finger never touches, and would prevent the
+   *  stick and the finger from ever carrying different protocols or different engine ceilings later. */
   finger: {
     id: 'finger',
     kind: 'moisture',
