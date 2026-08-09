@@ -49,6 +49,20 @@ export type InstrumentDirection = 'higher-is-wetter' | 'higher-is-drier';
  */
 export type InstrumentProtocolKind = 'insertion' | 'whole-pot-mass';
 
+/**
+ * HOW the owner supplies a reading — a PROPERTY OF THE ROW, never a case per device in the UI, for the same
+ * reason `protocolKind` is (QA finding F2, 2026-08-08).
+ *
+ * `numeric` — the instrument reports a number on a continuous or fine scale, and the owner types it.
+ * `ordinal` — the instrument reports one of a few named states, and the owner PICKS one. A wooden stick
+ *   does not produce a number; it produces "comes out clean" or "damp soil sticks to it". Rendering a
+ *   number field for it would invite an answer the instrument cannot give.
+ *
+ * The wire format is unchanged either way: an ordinal reading sends its LEVEL as `rawValue`, bounded by the
+ * row's own `rawMin`/`rawMax` exactly as every other instrument is. One transport, one write path.
+ */
+export type InstrumentCaptureKind = 'numeric' | 'ordinal';
+
 export interface InstrumentRow {
   id: InstrumentId;
   kind: ReadingKind;
@@ -61,6 +75,9 @@ export interface InstrumentRow {
   /** How a reading is physically taken — see `InstrumentProtocolKind`. Drives which measuring protocol the
    *  measuring modal states; the per-pot depth/distance numbers are only meaningful for `insertion`. */
   protocolKind: InstrumentProtocolKind;
+  /** How the owner supplies a reading — see `InstrumentCaptureKind`. Drives whether the measuring modal
+   *  renders a number field or a choice control. */
+  captureKind: InstrumentCaptureKind;
   /** Whether two pots' raw readings mean the same thing. FALSE for both rows built today: a cheap galvanic
    *  probe measures CONDUCTIVITY, not water, and a pot's mass depends on the pot. This is a property of the
    *  instrument, never a law wired into the engine. */
@@ -83,6 +100,7 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     scale: 'probe-1-10',
     direction: 'higher-is-wetter',
     protocolKind: 'insertion',
+    captureKind: 'numeric',
     comparableAcrossPots: false,
     requiresCalibration: false,
     rawMin: 1,
@@ -96,6 +114,7 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     scale: 'pot-mass-grams',
     direction: 'higher-is-wetter',
     protocolKind: 'whole-pot-mass',
+    captureKind: 'numeric',
     comparableAcrossPots: false,
     requiresCalibration: true,
     rawMin: 0,

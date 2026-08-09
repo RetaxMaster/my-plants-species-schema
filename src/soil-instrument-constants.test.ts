@@ -86,3 +86,16 @@ describe('the instrument property table', () => {
     expect(bad).toBe('tensiometer');
   });
 });
+
+describe('captureKind — how the owner supplies a reading', () => {
+  it('is declared on every row, so no consumer has to branch on the id', () => {
+    for (const row of INSTRUMENT_LIST) {
+      expect(row.captureKind === 'numeric' || row.captureKind === 'ordinal').toBe(true);
+    }
+  });
+
+  it('the two instruments built in 2026-08 are numeric', () => {
+    expect(INSTRUMENTS['galvanic-probe'].captureKind).toBe('numeric');
+    expect(INSTRUMENTS['kitchen-scale'].captureKind).toBe('numeric');
+  });
+});
