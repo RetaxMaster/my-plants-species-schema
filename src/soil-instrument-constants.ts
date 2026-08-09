@@ -169,3 +169,22 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
 
 /** The same rows in declaration order — the order the web renders them in. */
 export const INSTRUMENT_LIST: readonly InstrumentRow[] = INSTRUMENT_IDS.map((id) => INSTRUMENTS[id]);
+
+/**
+ * How many DISTINGUISHABLE states this instrument can report — derived from the row's own declared scale,
+ * never declared beside it, so an instrument's precision can never contradict the scale it publishes.
+ *
+ * `null` means the scale is OPEN-ENDED and effectively continuous (grams): there is no finite count of
+ * states, which is a different statement from "many", and consumers must handle it as such rather than
+ * substituting a large number.
+ *
+ * Consumed by the API engine to cap the confidence an instrument's series may claim: a fit's R-squared
+ * measures how tightly points fall on a line, and coarse data falls on a line BECAUSE it is coarse — so
+ * without this, three wooden-stick readings could outrank a kitchen scale that records the real noise of
+ * the world. The cap itself is an engine concern and lives there with its own care-engine ledger row; only
+ * the physical fact lives here.
+ */
+export function resolutionStates(row: InstrumentRow): number | null {
+  if (row.rawMax === null) return null;
+  return Math.floor((row.rawMax - row.rawMin) / row.rawStep) + 1;
+}

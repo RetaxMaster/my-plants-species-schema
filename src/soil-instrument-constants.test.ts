@@ -4,6 +4,7 @@ import {
   INSTRUMENTS,
   INSTRUMENT_LIST,
   READING_KINDS,
+  resolutionStates,
   type InstrumentId,
 } from './soil-instrument-constants.js';
 
@@ -145,6 +146,34 @@ describe('the instrument property table', () => {
     it('is a DISTINCT row from the wooden stick, never an alias', () => {
       expect(INSTRUMENTS['finger'].id).not.toBe(INSTRUMENTS['wooden-stick'].id);
       expect(INSTRUMENTS['finger'].scale).not.toBe(INSTRUMENTS['wooden-stick'].scale);
+    });
+  });
+
+  describe('resolutionStates — derived from the row, never declared beside it', () => {
+    it('counts the states of a closed scale', () => {
+      expect(resolutionStates(INSTRUMENTS['galvanic-probe'])).toBe(10);
+      expect(resolutionStates(INSTRUMENTS['wooden-stick'])).toBe(3);
+      expect(resolutionStates(INSTRUMENTS['finger'])).toBe(3);
+    });
+
+    it('reports null for an OPEN-ENDED scale — grams are continuous, not a count', () => {
+      expect(resolutionStates(INSTRUMENTS['kitchen-scale'])).toBeNull();
+    });
+
+    // The whole point of deriving rather than declaring: an instrument's precision cannot contradict the
+    // scale it publishes, because there is only one place the fact lives.
+    it('follows the row\'s own bounds for every instrument in the table', () => {
+      for (const row of INSTRUMENT_LIST) {
+        const expected = row.rawMax === null
+          ? null
+          : Math.floor((row.rawMax - row.rawMin) / row.rawStep) + 1;
+        expect(resolutionStates(row)).toBe(expected);
+      }
+    });
+
+    it('a finer instrument reports more states than a coarser one', () => {
+      expect(resolutionStates(INSTRUMENTS['galvanic-probe'])!)
+        .toBeGreaterThan(resolutionStates(INSTRUMENTS['wooden-stick'])!);
     });
   });
 });
