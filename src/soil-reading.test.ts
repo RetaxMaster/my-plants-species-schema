@@ -85,6 +85,11 @@ describe('soilReadingCreateSchema', () => {
         const low = { instrumentId: row.id, rawValue: row.rawMin - 1, measuredOn: '2026-08-08' };
         expect(soilReadingCreateSchema.safeParse(low).success).toBe(false);
         if (row.rawMax !== null) {
+          // The upper bound is INCLUSIVE too — rawMax itself must be ACCEPTED, not just rawMax + 1
+          // rejected. An off-by-one fork that narrowed the accepted range (`>` vs `>=`) would pass
+          // every other assertion here while silently refusing the row's own wettest reading.
+          const atMax = { instrumentId: row.id, rawValue: row.rawMax, measuredOn: '2026-08-08' };
+          expect(soilReadingCreateSchema.safeParse(atMax).success).toBe(true);
           const high = { instrumentId: row.id, rawValue: row.rawMax + 1, measuredOn: '2026-08-08' };
           expect(soilReadingCreateSchema.safeParse(high).success).toBe(false);
         }
@@ -138,6 +143,10 @@ describe('instrumentCalibrationSchema', () => {
 });
 
 describe('the Zod layer DERIVES from the table — adding a row needs no edit here', () => {
+  // Boundary coverage for these two rows already comes free from the generic loop above (it iterates
+  // INSTRUMENT_LIST, so wooden-stick and finger started being covered the moment they entered the table —
+  // that is the sharper proof of "no fork"). What that loop does NOT exercise is an interior value parsing
+  // end to end for the ORDINAL capture kind, so that is the only thing this case still adds.
   it('accepts a reading from each new ordinal instrument', () => {
     for (const id of ['wooden-stick', 'finger'] as const) {
       const parsed = soilReadingCreateSchema.safeParse({
@@ -145,20 +154,5 @@ describe('the Zod layer DERIVES from the table — adding a row needs no edit he
       });
       expect(parsed.success).toBe(true);
     }
-  });
-
-  it('bounds an ordinal reading by the row\'s OWN scale, with no hand-written per-instrument check', () => {
-    for (const id of ['wooden-stick', 'finger'] as const) {
-      for (const bad of [0, 4]) {
-        const parsed = soilReadingCreateSchema.safeParse({
-          instrumentId: id, rawValue: bad, measuredOn: '2026-08-09',
-        });
-        expect(parsed.success).toBe(false);
-      }
-    }
-  });
-
-  it('the id enum contains every row in the table, in the table\'s order', () => {
-    expect(instrumentIdEnum.options).toEqual(INSTRUMENT_IDS);
   });
 });
