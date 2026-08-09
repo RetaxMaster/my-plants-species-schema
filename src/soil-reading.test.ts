@@ -136,3 +136,29 @@ describe('instrumentCalibrationSchema', () => {
     expect(instrumentCalibrationSchema.safeParse({ saturatedValue: 900, dryValue: 1200 }).success).toBe(false);
   });
 });
+
+describe('the Zod layer DERIVES from the table — adding a row needs no edit here', () => {
+  it('accepts a reading from each new ordinal instrument', () => {
+    for (const id of ['wooden-stick', 'finger'] as const) {
+      const parsed = soilReadingCreateSchema.safeParse({
+        instrumentId: id, rawValue: 2, measuredOn: '2026-08-09',
+      });
+      expect(parsed.success).toBe(true);
+    }
+  });
+
+  it('bounds an ordinal reading by the row\'s OWN scale, with no hand-written per-instrument check', () => {
+    for (const id of ['wooden-stick', 'finger'] as const) {
+      for (const bad of [0, 4]) {
+        const parsed = soilReadingCreateSchema.safeParse({
+          instrumentId: id, rawValue: bad, measuredOn: '2026-08-09',
+        });
+        expect(parsed.success).toBe(false);
+      }
+    }
+  });
+
+  it('the id enum contains every row in the table, in the table\'s order', () => {
+    expect(instrumentIdEnum.options).toEqual(INSTRUMENT_IDS);
+  });
+});
