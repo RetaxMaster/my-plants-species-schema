@@ -27,7 +27,21 @@ changed for whoever depends on this package, not a commit dump.
 - **`rawValueRangeRefinement`**, the raw-value-in-scale bound extracted out of `soilReadingCreateSchema`'s
   own `superRefine` so a sibling schema (the API's read-only watering-verdict preview) can enforce the
   identical bound without pasting it a second time. Additive: `soilReadingCreateSchema`'s own behaviour is
-  unchanged, it now simply calls the extracted function.
+  unchanged, it now simply calls the extracted function. **It now also enforces `rawStep`**, so a value the
+  instrument could not have produced (`5.5` on the probe's integer 1..10 index) is refused rather than
+  stored as a measurement. Granularity is checked ONLY where the scale is closed (`rawMax !== null`): the
+  kitchen scale declares `rawStep: 1` too, but its ceiling is open because grams are continuous, and a real
+  scale legitimately reads `1234.5 g`. When a value breaks both bounds and step, only the bounds issue is
+  raised — it is the one the caller can act on.
+- **`protocolKind` gained a third value, `'shallow-insertion'`.** Previously `'insertion' | 'whole-pot-mass'`.
+  It describes an instrument that IS pushed into the medium but to a depth the instrument itself fixes,
+  rather than one computed from the pot — a finger reaches the top few centimetres whatever the pot's
+  diameter says. **`finger` moved from `'insertion'` to `'shallow-insertion'`**, which is a behaviour change
+  for any consumer that prints a pot-derived depth: it must no longer do so for that row. This is the same
+  defect `protocolKind` was introduced to fix (a kitchen scale being shown an insertion depth) recurring one
+  instrument later, and it matters beyond wording — the API's `FINGER_DEPTH_PENALTY` assumes a finger reads
+  the top layer, so instructing an owner to insert one 6 cm deep contradicted the engine's own reasoning.
+
 - **`Recommendation` / `HoldBasis` / `UnavailableReason`-shaped unions promoted to the shared contract**, at
   a new `watering-verdict-constants.ts` (Zod-free, same pattern as `soil-instrument-constants.ts`) and
   re-exported from `index.ts` and its own package subpath. These were closed literal unions the API's
