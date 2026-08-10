@@ -29,6 +29,12 @@ export const readingKindEnum = z.enum(READING_KINDS);
  * apart — a sibling schema (the read-only verdict preview, `my-plants-api`) needs the identical bound
  * without re-typing it. Never paste this function's body a second time: a duplicated range check is
  * precisely the fork that lets a preview answer a question the write would refuse.
+ *
+ * ⚠️ THE NAME SAYS "RANGE"; SINCE 2026-08-10 IT ENFORCES THE WHOLE DECLARED SCALE — bounds AND granularity
+ * (`rawStep`), the latter only where the scale is closed. The name was deliberately NOT changed: it is
+ * exported and imported across two repos, and a rename in the middle of a QA fix round is churn that buys
+ * nothing a sentence cannot. Read "range" as "the set of values this instrument can actually produce",
+ * which is what both halves check.
  */
 export function rawValueRangeRefinement(
   v: { instrumentId: InstrumentId; rawValue: number },
@@ -46,6 +52,36 @@ export function rawValueRangeRefinement(
         `rawValue ${v.rawValue} is outside the ${v.instrumentId} scale ` +
         `(${row.rawMin}..${row.rawMax ?? 'open-ended'})`,
     });
+    return;
+  }
+
+  // GRANULARITY, and it is enforced ONLY ON A CLOSED SCALE (`rawMax !== null`). QA (2026-08-10) recorded
+  // `5.5` on the galvanic probe, whose row declares `rawStep: 1` over a 1..10 index: a reading with more
+  // precision than the instrument can physically produce, stored as though it were measured. That is the
+  // same class as the out-of-range clamp this refinement was written for — a fabricated number inside a
+  // legal-looking range — one digit further in.
+  //
+  // ⚠️ THE CLOSED-SCALE CONDITION IS THE WHOLE DESIGN, NOT A SHORTCUT. The kitchen scale also declares
+  // `rawStep: 1`, but its `rawMax` is `null` because grams are genuinely open-ended, and `1234.5 g` is a
+  // perfectly real reading off a real kitchen scale. A naive step check would reject it. `rawMax !== null`
+  // is the same "is this scale declared closed" test the range check above already uses for its ceiling, so
+  // the two halves cannot drift apart on what "closed" means.
+  //
+  // The tolerance is not decoration: `(v - min) / step` is floating-point division, so a legitimate value
+  // on a fractional step (none ship today, but the contract permits one) would otherwise fail on a
+  // representation error rather than on a real one. Scaled to the step so it stays meaningful whatever the
+  // step's magnitude.
+  if (row.rawMax !== null && row.rawStep > 0) {
+    const steps = (v.rawValue - row.rawMin) / row.rawStep;
+    if (Math.abs(steps - Math.round(steps)) > 1e-9) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['rawValue'],
+        message:
+          `rawValue ${v.rawValue} is not a whole step on the ${v.instrumentId} scale ` +
+          `(from ${row.rawMin}, in steps of ${row.rawStep})`,
+      });
+    }
   }
 }
 

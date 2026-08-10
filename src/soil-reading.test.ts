@@ -37,6 +37,40 @@ describe('rawValueRangeRefinement (shared, extracted from soilReadingCreateSchem
     expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: 0 }).success).toBe(true);
     expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: -1 }).success).toBe(false);
   });
+
+  // QA 2026-08-10. `5.5` on a probe that declares `rawStep: 1` over a 1..10 index is a reading with more
+  // precision than the instrument can produce, stored as if it had been measured — the same class as the
+  // out-of-range clamp this refinement was written for, one digit further in.
+  it('rejects a fractional reading on a CLOSED integer scale', () => {
+    const bad = minimal.safeParse({ instrumentId: 'galvanic-probe', rawValue: 5.5 });
+    expect(bad.success).toBe(false);
+    // The message must name the granularity, not merely repeat the bounds — the value IS within 1..10, so
+    // a bounds-flavoured message would send the owner looking for the wrong problem.
+    expect(bad.success === false && bad.error.issues[0]!.message).toContain('whole step');
+  });
+
+  it('rejects a fraction on the ordinal rows too — a named state has no half', () => {
+    expect(minimal.safeParse({ instrumentId: 'wooden-stick', rawValue: 2.5 }).success).toBe(false);
+    expect(minimal.safeParse({ instrumentId: 'finger', rawValue: 1.5 }).success).toBe(false);
+    expect(minimal.safeParse({ instrumentId: 'wooden-stick', rawValue: 2 }).success).toBe(true);
+  });
+
+  // ⚠️ THE CASE THE OBVIOUS FIX BREAKS. The kitchen scale ALSO declares `rawStep: 1`, but its `rawMax` is
+  // `null` because grams are open-ended — and `1234.5 g` is what a real kitchen scale actually reads. A
+  // step check that ignored the closed-scale condition would refuse a perfectly good measurement. The
+  // Codex gate flagged this trap before the fix was written; this case is what keeps it flagged.
+  it('still accepts a FRACTIONAL weight on the open-ended scale', () => {
+    expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: 1234.5 }).success).toBe(true);
+    expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: 0.25 }).success).toBe(true);
+  });
+
+  it('reports the BOUNDS problem, not the step problem, when a value is both', () => {
+    // `99.5` is out of range AND off-step. One issue, and it must be the one the owner can act on.
+    const bad = minimal.safeParse({ instrumentId: 'galvanic-probe', rawValue: 99.5 });
+    expect(bad.success).toBe(false);
+    expect(bad.success === false && bad.error.issues).toHaveLength(1);
+    expect(bad.success === false && bad.error.issues[0]!.message).toContain('outside');
+  });
 });
 
 describe('the Zod layer is DERIVED from the constant arrays (no fork)', () => {

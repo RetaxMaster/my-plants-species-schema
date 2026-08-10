@@ -47,8 +47,20 @@ export type InstrumentDirection = 'higher-is-wetter' | 'higher-is-drier';
  * `insertion` — the reading is taken by pushing the instrument INTO the medium; depth and distance from the
  *   centre are meaningful and are computed from the pot's own diameter.
  * `whole-pot-mass` — the reading is a property of the WHOLE pot; depth and distance are meaningless for it.
+ * `shallow-insertion` — inserted, but to a depth the INSTRUMENT fixes rather than the pot: a finger reaches
+ *   the top few centimetres and no further, whatever the pot's diameter says. The pot-derived depth is
+ *   therefore WRONG for it and must not be printed.
+ *
+ * ⚠️ `shallow-insertion` was added 2026-08-10, and it exists because the defect this field was invented to
+ * kill came back one instrument over. QA found the finger being shown the wooden stick's guidance verbatim
+ * — "insert to about 6 cm deep" — because both rows said `insertion` and the depth is computed from the
+ * pot. That contradicts our own Settings copy (the finger reads "only the first few centimetres") and, far
+ * worse, it contradicts the ENGINE: `FINGER_DEPTH_PENALTY` exists precisely because the finger samples the
+ * top ~3 cm, the driest and most volatile zone. Telling the owner to insert a finger 6 cm makes the printed
+ * protocol describe a measurement whose penalty assumes the opposite. The lesson is the one already written
+ * above: the answer is a PROPERTY OF THE ROW, never a case per device in the UI.
  */
-export type InstrumentProtocolKind = 'insertion' | 'whole-pot-mass';
+export type InstrumentProtocolKind = 'insertion' | 'whole-pot-mass' | 'shallow-insertion';
 
 /**
  * HOW the owner supplies a reading — a PROPERTY OF THE ROW, never a case per device in the UI, for the same
@@ -157,7 +169,11 @@ export const INSTRUMENTS: Readonly<Record<InstrumentId, InstrumentRow>> = {
     unit: 'level',
     scale: 'finger-dry-to-damp',
     direction: 'higher-is-wetter',
-    protocolKind: 'insertion',
+    // `shallow-insertion`, NOT `insertion` (QA 2026-08-10). The comment directly above already said a
+    // finger reaches about 3 cm while a stick goes to the bottom — but the row still declared the same
+    // protocol as the stick, so the app printed the POT-DERIVED depth and instructed the owner to judge
+    // soil at a depth their finger never touches: the exact failure that comment warned about, shipped.
+    protocolKind: 'shallow-insertion',
     captureKind: 'ordinal',
     comparableAcrossPots: false,
     requiresCalibration: false,

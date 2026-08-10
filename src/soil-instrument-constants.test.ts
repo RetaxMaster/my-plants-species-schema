@@ -68,18 +68,38 @@ describe('the instrument property table', () => {
 
   it('gives EVERY row a protocol kind, so no surface has to fall back to a default that would be wrong', () => {
     for (const row of INSTRUMENT_LIST) {
-      expect(['insertion', 'whole-pot-mass']).toContain(row.protocolKind);
+      expect(['insertion', 'whole-pot-mass', 'shallow-insertion']).toContain(row.protocolKind);
     }
   });
 
-  it('never declares a whole-pot-mass instrument as needing insertion depth: the two are mutually exclusive', () => {
-    // The pairing that matters downstream — a `whole-pot-mass` row must never be rendered with a depth, and
-    // the only thing that can make that true is that no row claims both.
-    for (const row of INSTRUMENT_LIST) {
-      expect(row.protocolKind === 'insertion' || row.protocolKind === 'whole-pot-mass').toBe(true);
-    }
+  // ⚠️ REWRITTEN 2026-08-10. This case, and the list below it, used to assert that `finger` was an
+  // `insertion` row — faithfully, because it was. QA found the consequence: the app printed the POT-DERIVED
+  // depth ("insert to about 6 cm") for a finger that reaches about 3 cm, contradicting both our own
+  // Settings copy and `FINGER_DEPTH_PENALTY`, which exists precisely because the finger samples the top
+  // layer. The finger is now `shallow-insertion`.
+  it('only a POT-DERIVED depth is printed for a plain `insertion` row — the other two kinds are excluded', () => {
+    // The pairing that matters downstream: exactly one kind may be rendered with the pot's computed depth
+    // and distance. A `whole-pot-mass` row has no depth at all; a `shallow-insertion` row has one the
+    // INSTRUMENT fixes, not the pot — so printing the pot's number would be wrong for it in a different
+    // way, and just as wrong.
     expect(INSTRUMENT_LIST.filter((r) => r.protocolKind === 'insertion').map((r) => r.id))
-      .toEqual(['galvanic-probe', 'wooden-stick', 'finger']);
+      .toEqual(['galvanic-probe', 'wooden-stick']);
+    expect(INSTRUMENT_LIST.filter((r) => r.protocolKind === 'whole-pot-mass').map((r) => r.id))
+      .toEqual(['kitchen-scale']);
+    expect(INSTRUMENT_LIST.filter((r) => r.protocolKind === 'shallow-insertion').map((r) => r.id))
+      .toEqual(['finger']);
+  });
+
+  // The stick and the finger read the SAME three states, and that shared shape is exactly what made it easy
+  // to give them the same protocol. Pinning the difference keeps a future "simplification" from merging it
+  // back — the depth is the whole reason they are two rows.
+  it('the stick and the finger agree on everything EXCEPT the depth their protocol implies', () => {
+    const stick = INSTRUMENTS['wooden-stick'];
+    const finger = INSTRUMENTS.finger;
+    expect(finger.captureKind).toBe(stick.captureKind);
+    expect(finger.rawMin).toBe(stick.rawMin);
+    expect(finger.rawMax).toBe(stick.rawMax);
+    expect(finger.protocolKind).not.toBe(stick.protocolKind);
   });
 
   it('types an unknown id out of existence', () => {
@@ -128,10 +148,12 @@ describe('the instrument property table', () => {
   });
 
   describe('the finger — the same observation, a different zone', () => {
-    it('is an ordinal insertion instrument needing no calibration', () => {
+    it('is an ordinal SHALLOW-insertion instrument needing no calibration', () => {
       const row = INSTRUMENTS['finger'];
       expect(row.captureKind).toBe('ordinal');
-      expect(row.protocolKind).toBe('insertion');
+      // ⚠️ REWRITTEN 2026-08-10 — this asserted `'insertion'`, which is what let the app print the pot's
+      // computed depth for an instrument that physically cannot reach it. See the type's own comment.
+      expect(row.protocolKind).toBe('shallow-insertion');
       expect(row.requiresCalibration).toBe(false);
     });
 
