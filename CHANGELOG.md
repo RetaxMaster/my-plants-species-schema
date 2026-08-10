@@ -10,6 +10,18 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
+- **A calibration anchor is now held to the instrument's own scale, not just to the other anchor.**
+  `instrumentCalibrationSchema` is instrument-agnostic — it never sees an instrument id — so
+  `saturatedValue > dryValue` was the only rule it could enforce, and `{ saturatedValue: 2000, dryValue:
+  -500 }` passed. New `instrumentCalibrationSchemaFor(instrumentId)` wraps it and bounds each anchor by the
+  same scale a reading is bounded by. The agnostic schema is unchanged and still exported: consumers that
+  genuinely cannot name an instrument keep working, they simply get the weaker of the two guarantees.
+- **`offScaleReason(instrumentId, value)`**, extracted out of `rawValueRangeRefinement`, is now the single
+  implementation of "is this a value this instrument can produce?" — bounds and, on a closed scale,
+  granularity. It returns the reason as a string rather than a boolean, which is what lets one
+  implementation serve three different Zod paths (`rawValue`, `saturatedValue`, `dryValue`) instead of the
+  three copies that let the anchors drift out of the rule in the first place. `rawValueRangeRefinement`'s
+  own behaviour and message are unchanged; it now calls this.
 - **Two new, hardware-free instruments: `wooden-stick` and `finger`.** Both report one of three named
   states (`rawMin: 1, rawMax: 3`) rather than a physical number, so a new `captureKind` property
   (`'numeric' | 'ordinal'`) says how a reading is actually supplied: `numeric` for the existing probe and

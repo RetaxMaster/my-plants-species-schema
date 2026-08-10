@@ -40,20 +40,48 @@ export function rawValueRangeRefinement(
   v: { instrumentId: InstrumentId; rawValue: number },
   ctx: z.RefinementCtx,
 ): void {
-  const row = INSTRUMENTS[v.instrumentId];
-  if (row === undefined) return; // an unknown id is caught by instrumentIdEnum itself; nothing to bound it against
-  const belowMin = v.rawValue < row.rawMin;
-  const aboveMax = row.rawMax !== null && v.rawValue > row.rawMax;
-  if (belowMin || aboveMax) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['rawValue'],
-      message:
-        `rawValue ${v.rawValue} is outside the ${v.instrumentId} scale ` +
-        `(${row.rawMin}..${row.rawMax ?? 'open-ended'})`,
-    });
-    return;
+  const reason = offScaleReason(v.instrumentId, v.rawValue);
+  if (reason !== null) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['rawValue'], message: `rawValue ${reason}` });
   }
+}
+
+/**
+ * IS THIS A VALUE THE INSTRUMENT CAN ACTUALLY PRODUCE? Returns why it is not, or `null`.
+ *
+ * EXTRACTED from `rawValueRangeRefinement` (QA round 3, 2026-08-10) for one reason: a CALIBRATION ANCHOR is
+ * a reading on the very same scale — "this pot at container capacity" and "this pot dry" are both weights
+ * off the same kitchen scale — so every bound that binds a reading binds an anchor identically. Until this
+ * split, the two lived in different worlds: the reading was checked against the instrument row, while
+ * `instrumentCalibrationSchema` asked only for two finite numbers with `saturated > dry`. QA saved a DRY
+ * ANCHOR OF `-500 g` through the UI and the API, with a `200 OK` and the value echoed back — a pot of
+ * negative mass, after which every wetness fraction that pot ever reports is computed off a broken ruler.
+ *
+ * Returning a REASON STRING rather than a boolean is what lets the one implementation serve three callers
+ * that each need a different Zod `path` (`rawValue`, `saturatedValue`, `dryValue`) — the alternative was
+ * three copies of the bound, which is exactly the fork this project's guide forbids and exactly how the
+ * anchors drifted out of the check in the first place.
+ *
+ * The message is written to read correctly after ANY of those field names is prefixed to it.
+ */
+export function offScaleReason(instrumentId: InstrumentId, value: number): string | null {
+  const row = INSTRUMENTS[instrumentId];
+  if (row === undefined) return null; // an unknown id is caught by instrumentIdEnum itself; nothing to bound against
+  const belowMin = value < row.rawMin;
+  const aboveMax = row.rawMax !== null && value > row.rawMax;
+  if (belowMin || aboveMax) {
+    return (
+      `${value} is outside the ${instrumentId} scale ` +
+      `(${row.rawMin}..${row.rawMax ?? 'open-ended'})`
+    );
+  }
+  return offStepReason(instrumentId, value);
+}
+
+/** The granularity half, split out only so `offScaleReason` reads as the two checks it is. */
+function offStepReason(instrumentId: InstrumentId, value: number): string | null {
+  const row = INSTRUMENTS[instrumentId];
+  if (row === undefined) return null;
 
   // GRANULARITY, and it is enforced ONLY ON A CLOSED SCALE (`rawMax !== null`). QA (2026-08-10) recorded
   // `5.5` on the galvanic probe, whose row declares `rawStep: 1` over a 1..10 index: a reading with more
@@ -72,17 +100,15 @@ export function rawValueRangeRefinement(
   // representation error rather than on a real one. Scaled to the step so it stays meaningful whatever the
   // step's magnitude.
   if (row.rawMax !== null && row.rawStep > 0) {
-    const steps = (v.rawValue - row.rawMin) / row.rawStep;
+    const steps = (value - row.rawMin) / row.rawStep;
     if (Math.abs(steps - Math.round(steps)) > 1e-9) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['rawValue'],
-        message:
-          `rawValue ${v.rawValue} is not a whole step on the ${v.instrumentId} scale ` +
-          `(from ${row.rawMin}, in steps of ${row.rawStep})`,
-      });
+      return (
+        `${value} is not a whole step on the ${instrumentId} scale ` +
+        `(from ${row.rawMin}, in steps of ${row.rawStep})`
+      );
     }
   }
+  return null;
 }
 
 /** What the owner decided AFTER taking the reading (spec §4.8). A verdict maps onto a path that already
@@ -150,3 +176,44 @@ export const instrumentCalibrationSchema = z
     message: 'saturatedValue must be strictly greater than dryValue',
   });
 export type InstrumentCalibration = z.infer<typeof instrumentCalibrationSchema>;
+
+/**
+ * THE SAME CALIBRATION, BOUND TO ONE INSTRUMENT'S SCALE (QA round 3, 2026-08-10).
+ *
+ * `instrumentCalibrationSchema` above is instrument-AGNOSTIC on purpose — it is the shape, and the shape is
+ * two numbers and a positive span. That is genuinely all it can check, because it does not know which
+ * instrument the anchors belong to. The consequence, until this factory existed, was that the ONLY rule
+ * standing between the owner and a corrupted pot was `saturated > dry`: QA sent `{2000, -500}`, `{2000, 0}`
+ * and `{-100, -200}` and every one of them was stored with a `200 OK`.
+ *
+ * A NEGATIVE MASS IS NOT A TYPO THE ENGINE CAN SURVIVE. The anchors define the affine map from a raw
+ * reading to a 0..1 wetness fraction, so a dry anchor of `-500 g` does not fail loudly — it silently
+ * rescales every future reading of that pot (a real 1000 g reading reports 60 % wet), and the resulting
+ * fractions are all perfectly legal, which is precisely what makes them unfindable afterwards.
+ *
+ * WHY A FACTORY AND NOT A FIELD: the instrument id lives in the ROUTE (`PUT
+ * .../calibration/:instrumentId`), not in the body, and putting it in the body would create a second place
+ * for it to be stated and therefore a way for the two to disagree. The caller already knows which
+ * instrument it parsed; it passes it here.
+ *
+ * ⚠️ THE CEILING STAYS OPEN, DELIBERATELY. `INSTRUMENTS['kitchen-scale'].rawMax` is `null` because grams
+ * genuinely are open-ended, so this refuses a negative anchor and accepts an absurdly large one. That is
+ * not an oversight: no horticultural source names a maximum pot mass, and `docs/care-engine.md` §7 forbids
+ * shipping a constant nobody can derive. The physically IMPOSSIBLE half is refused here; the merely
+ * implausible half is made visible and correctable instead, by the calibration editor the same fix round
+ * added. See §7.20.12.
+ */
+export function instrumentCalibrationSchemaFor(instrumentId: InstrumentId) {
+  return instrumentCalibrationSchema.superRefine((v, ctx) => {
+    const saturated = offScaleReason(instrumentId, v.saturatedValue);
+    if (saturated !== null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom, path: ['saturatedValue'], message: `saturatedValue ${saturated}`,
+      });
+    }
+    const dry = offScaleReason(instrumentId, v.dryValue);
+    if (dry !== null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['dryValue'], message: `dryValue ${dry}` });
+    }
+  });
+}

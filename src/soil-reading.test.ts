@@ -5,6 +5,7 @@ import {
   readingKindEnum,
   soilReadingCreateSchema,
   instrumentCalibrationSchema,
+  instrumentCalibrationSchemaFor,
   rawValueRangeRefinement,
   wateringRelationEnum,
   WATERING_RELATIONS,
@@ -203,6 +204,75 @@ describe('instrumentCalibrationSchema', () => {
   it('REFUSES a saturated anchor that is not above the dry one — a zero or negative span is not a scale', () => {
     expect(instrumentCalibrationSchema.safeParse({ saturatedValue: 1200, dryValue: 1200 }).success).toBe(false);
     expect(instrumentCalibrationSchema.safeParse({ saturatedValue: 900, dryValue: 1200 }).success).toBe(false);
+  });
+
+  // ⚠️ THE SCHEMA ABOVE IS INSTRUMENT-AGNOSTIC AND CANNOT BE ANYTHING ELSE — it never sees an instrument
+  // id, so `saturated > dry` is the only rule available to it. That is exactly the gap QA walked through
+  // (2026-08-10) with a dry anchor of `-500 g`, accepted end to end with a 200. Keeping this case here,
+  // next to the factory's own suite below, so the next reader sees WHY there are two schemas rather than
+  // reading the agnostic one as the whole rule.
+  it('CANNOT catch a physically impossible anchor on its own — that is the factory\'s job', () => {
+    expect(instrumentCalibrationSchema.safeParse({ saturatedValue: 2000, dryValue: -500 }).success)
+      .toBe(true);
+  });
+});
+
+describe('instrumentCalibrationSchemaFor (the anchors bound to ONE instrument\'s scale)', () => {
+  it('accepts two ordered anchors that are both real weights', () => {
+    const p = instrumentCalibrationSchemaFor('kitchen-scale').parse({
+      saturatedValue: 1850, dryValue: 1200,
+    });
+    expect(p).toEqual({ saturatedValue: 1850, dryValue: 1200 });
+  });
+
+  it('REFUSES a negative dry anchor — the exact body QA stored with a 200 OK', () => {
+    const r = instrumentCalibrationSchemaFor('kitchen-scale')
+      .safeParse({ saturatedValue: 2000, dryValue: -500 });
+    expect(r.success).toBe(false);
+    // The PATH matters as much as the refusal: it is what lets the browser mark the offending field rather
+    // than reporting a whole-form error the owner has to hunt through.
+    expect(r.error!.issues.map((i) => i.path.join('.'))).toContain('dryValue');
+  });
+
+  it('REFUSES both anchors when both are off the scale, naming each one', () => {
+    const r = instrumentCalibrationSchemaFor('kitchen-scale')
+      .safeParse({ saturatedValue: -100, dryValue: -200 });
+    expect(r.success).toBe(false);
+    const paths = r.error!.issues.map((i) => i.path.join('.'));
+    expect(paths).toContain('saturatedValue');
+    expect(paths).toContain('dryValue');
+  });
+
+  it('still inherits the span rule from the agnostic schema it wraps', () => {
+    expect(instrumentCalibrationSchemaFor('kitchen-scale')
+      .safeParse({ saturatedValue: 1000, dryValue: 2000 }).success).toBe(false);
+    expect(instrumentCalibrationSchemaFor('kitchen-scale')
+      .safeParse({ saturatedValue: 1000, dryValue: 1000 }).success).toBe(false);
+  });
+
+  // ⚠️ THIS IS AN ACCEPTED LIMIT, PINNED ON PURPOSE — not an oversight anyone should "fix" by inventing a
+  // number. `kitchen-scale.rawMax` is null because grams genuinely are open-ended, and no source names a
+  // maximum pot mass, so `docs/care-engine.md` §7 forbids shipping a ceiling here. The physically
+  // impossible half (a negative mass) IS refused above; the merely implausible half is made visible and
+  // correctable by the calibration editor instead. If this test ever goes red, someone added a constant —
+  // check that §7.10 carries its ledger row before believing the change.
+  it('ACCEPTS an implausibly large anchor — the gram ceiling is open by contract, and stays open', () => {
+    expect(instrumentCalibrationSchemaFor('kitchen-scale')
+      .safeParse({ saturatedValue: 9007199254740991, dryValue: 1 }).success).toBe(true);
+  });
+
+  it('accepts a zero dry anchor — `rawMin: 0` says zero grams is ON the scale', () => {
+    expect(instrumentCalibrationSchemaFor('kitchen-scale')
+      .safeParse({ saturatedValue: 2000, dryValue: 0 }).success).toBe(true);
+  });
+
+  // The whole reason the bound was EXTRACTED rather than re-typed: one implementation, three Zod paths. A
+  // value the reading schema refuses must be refused as an anchor too, on every instrument, for free.
+  it('binds every instrument to its OWN scale, not the kitchen scale\'s', () => {
+    const r = instrumentCalibrationSchemaFor('galvanic-probe')
+      .safeParse({ saturatedValue: 11, dryValue: 5 });
+    expect(r.success).toBe(false);
+    expect(r.error!.issues.map((i) => i.path.join('.'))).toContain('saturatedValue');
   });
 });
 
