@@ -1,11 +1,53 @@
 import { z } from 'zod';
 import { strictYmd } from './calendar-date.js';
-import { INSTRUMENT_IDS, INSTRUMENTS, READING_KINDS } from './soil-instrument-constants.js';
+import { INSTRUMENT_IDS, INSTRUMENTS, READING_KINDS, type InstrumentId } from './soil-instrument-constants.js';
 
 // The Zod layer over the instrument property table. Both enums are DERIVED from the Zod-free arrays, so the
 // arrays stay the single source of truth and the vocabulary can never fork.
 export const instrumentIdEnum = z.enum(INSTRUMENT_IDS);
 export const readingKindEnum = z.enum(READING_KINDS);
+
+/**
+ * ⚠️ THE RAW VALUE MUST LIE ON THE INSTRUMENT'S OWN DECLARED SCALE (QA finding F5, 2026-08-08).
+ *
+ * `rawValue` used to be validated as nothing more than a finite number, so `99`, `-50` and `1e9` were all
+ * accepted with a 201 on a probe whose printed scale is 1–10. The `[0,1]` wetness invariant still held —
+ * `normaliseReading` clamps — and that is exactly what made it dangerous: the owner's own record then
+ * stores a raw observation they could not have made, normalised into a perfectly legal fraction that the
+ * estimator treats as a real anchor. `docs/care-engine.md` §7.20.2 keeps the clamp as the honest treatment
+ * of a reading that is merely NEAR the edge of its scale (a pot weighed with its saucer, a plant that
+ * grew); it was never a licence to ACCEPT a value off the scale entirely.
+ *
+ * The bounds come from the instrument row itself — never a second, hand-written copy per surface — so
+ * adding the capacitive/tensiometer rows extends this check with no edit here. `rawMax === null` is
+ * OPEN-ENDED by contract (grams), so only the lower bound binds for the kitchen scale; a negative mass is
+ * still refused, which is the whole point of the row declaring `rawMin: 0`.
+ *
+ * EXTRACTED (2026-08-09, code review on 6f4ed3e) so ANY schema carrying an `{ instrumentId, rawValue }`
+ * pair can share this ONE rule via `.superRefine(rawValueRangeRefinement)`. `soilReadingCreateSchema`
+ * becomes a `ZodEffects` the moment `.superRefine` is chained onto it, so it can no longer be `.pick()`ed
+ * apart — a sibling schema (the read-only verdict preview, `my-plants-api`) needs the identical bound
+ * without re-typing it. Never paste this function's body a second time: a duplicated range check is
+ * precisely the fork that lets a preview answer a question the write would refuse.
+ */
+export function rawValueRangeRefinement(
+  v: { instrumentId: InstrumentId; rawValue: number },
+  ctx: z.RefinementCtx,
+): void {
+  const row = INSTRUMENTS[v.instrumentId];
+  if (row === undefined) return; // an unknown id is caught by instrumentIdEnum itself; nothing to bound it against
+  const belowMin = v.rawValue < row.rawMin;
+  const aboveMax = row.rawMax !== null && v.rawValue > row.rawMax;
+  if (belowMin || aboveMax) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['rawValue'],
+      message:
+        `rawValue ${v.rawValue} is outside the ${v.instrumentId} scale ` +
+        `(${row.rawMin}..${row.rawMax ?? 'open-ended'})`,
+    });
+  }
+}
 
 /** What the owner decided AFTER taking the reading (spec §4.8). A verdict maps onto a path that already
  *  exists — a WATER postpone or the existing early-water DONE — never onto a new scheduling rule. */
@@ -36,39 +78,13 @@ export const soilReadingCreateSchema = z
      *  excluded from the drying-rate fit rather than guessed onto either side of the watering. */
     wateringRelation: wateringRelationEnum.optional(),
   })
+  // Shared, so BOTH layers enforce it: this schema validates the owner's HTTP body at the API edge and is
+  // the same module the web imports its bounds from — and now also the SAME function the read-only verdict
+  // preview schema calls (`my-plants-api`'s `soil-readings.controller.ts`). Browser-only validation is
+  // precisely the class A4 exists to eliminate; a preview that skipped this rule and answered anyway would
+  // be the identical class of defect, one layer over.
+  .superRefine(rawValueRangeRefinement)
   .superRefine((v, ctx) => {
-    // ⚠️ THE RAW VALUE MUST LIE ON THE INSTRUMENT'S OWN DECLARED SCALE (QA finding F5, 2026-08-08).
-    //
-    // `rawValue` used to be validated as nothing more than a finite number, so `99`, `-50` and `1e9` were
-    // all accepted with a 201 on a probe whose printed scale is 1–10. The `[0,1]` wetness invariant still
-    // held — `normaliseReading` clamps — and that is exactly what made it dangerous: the owner's own record
-    // then stores a raw observation they could not have made, normalised into a perfectly legal fraction
-    // that the estimator treats as a real anchor. `docs/care-engine.md` §7.20.2 keeps the clamp as the
-    // honest treatment of a reading that is merely NEAR the edge of its scale (a pot weighed with its
-    // saucer, a plant that grew); it was never a licence to ACCEPT a value off the scale entirely.
-    //
-    // The bounds come from the instrument row itself — never a second, hand-written copy per surface — so
-    // adding the capacitive/tensiometer rows extends this check with no edit here. `rawMax === null` is
-    // OPEN-ENDED by contract (grams), so only the lower bound binds for the kitchen scale; a negative mass
-    // is still refused, which is the whole point of the row declaring `rawMin: 0`.
-    //
-    // Shared, so BOTH layers enforce it: this schema validates the owner's HTTP body at the API edge and is
-    // the same module the web imports its bounds from. Browser-only validation is precisely the class A4
-    // exists to eliminate.
-    const row = INSTRUMENTS[v.instrumentId];
-    if (row !== undefined) {
-      const belowMin = v.rawValue < row.rawMin;
-      const aboveMax = row.rawMax !== null && v.rawValue > row.rawMax;
-      if (belowMin || aboveMax) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['rawValue'],
-          message:
-            `rawValue ${v.rawValue} is outside the ${v.instrumentId} scale ` +
-            `(${row.rawMin}..${row.rawMax ?? 'open-ended'})`,
-        });
-      }
-    }
     if (v.verdict === 'POSTPONE' && v.postponeToOn === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

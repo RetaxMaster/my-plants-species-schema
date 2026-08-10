@@ -1,13 +1,43 @@
+import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 import {
   instrumentIdEnum,
   readingKindEnum,
   soilReadingCreateSchema,
   instrumentCalibrationSchema,
+  rawValueRangeRefinement,
   wateringRelationEnum,
   WATERING_RELATIONS,
 } from './soil-reading.js';
 import { INSTRUMENT_IDS, INSTRUMENT_LIST, READING_KINDS } from './soil-instrument-constants.js';
+
+// `rawValueRangeRefinement` STANDALONE (extracted 2026-08-09, code review on 6f4ed3e): the whole point of
+// extracting it is that a SIBLING schema — the read-only verdict preview in `my-plants-api` — can call the
+// SAME function via `.superRefine(rawValueRangeRefinement)` without re-typing the bound. This suite proves
+// the extracted function is independently correct, not merely exercised as a side effect of
+// `soilReadingCreateSchema`'s own tests below (which continue to cover it through that schema too).
+describe('rawValueRangeRefinement (shared, extracted from soilReadingCreateSchema)', () => {
+  // A minimal schema carrying nothing but the two fields the refinement needs — the SAME shape a preview
+  // schema would build, proving the function works with no other fields chained around it.
+  const minimal = z.object({ instrumentId: instrumentIdEnum, rawValue: z.number().finite() })
+    .superRefine(rawValueRangeRefinement);
+
+  it('rejects a value outside a CLOSED scale (the probe\'s printed 1..10)', () => {
+    expect(minimal.safeParse({ instrumentId: 'galvanic-probe', rawValue: 99 }).success).toBe(false);
+    expect(minimal.safeParse({ instrumentId: 'galvanic-probe', rawValue: -50 }).success).toBe(false);
+  });
+
+  it('accepts a value inside the closed scale, both endpoints inclusive', () => {
+    expect(minimal.safeParse({ instrumentId: 'galvanic-probe', rawValue: 1 }).success).toBe(true);
+    expect(minimal.safeParse({ instrumentId: 'galvanic-probe', rawValue: 10 }).success).toBe(true);
+  });
+
+  it('accepts the OPEN-ENDED kitchen scale\'s large weights — only the floor binds', () => {
+    expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: 1_000_000 }).success).toBe(true);
+    expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: 0 }).success).toBe(true);
+    expect(minimal.safeParse({ instrumentId: 'kitchen-scale', rawValue: -1 }).success).toBe(false);
+  });
+});
 
 describe('the Zod layer is DERIVED from the constant arrays (no fork)', () => {
   it('derives the instrument enum from INSTRUMENT_IDS', () => {
