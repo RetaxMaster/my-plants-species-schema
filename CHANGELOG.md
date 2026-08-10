@@ -8,6 +8,33 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+### Added
+
+- **Two new, hardware-free instruments: `wooden-stick` and `finger`.** Both report one of three named
+  states (`rawMin: 1, rawMax: 3`) rather than a physical number, so a new `captureKind` property
+  (`'numeric' | 'ordinal'`) says how a reading is actually supplied: `numeric` for the existing probe and
+  scale, `ordinal` for these two — a consumer renders a choice control instead of a number field, but the
+  wire format is unchanged (the chosen level still travels as `rawValue`, bounded like any other reading).
+  They are two separate rows, not one shared row, because they reach different depths of the same pot (a
+  stick to the bottom, a finger about 3 cm in) and therefore read different zones of it. Neither needs a
+  calibration — a named state is not a raw physical quantity an anchor could rescale.
+- **`resolutionStates(row)`**, derived from an instrument row's own `rawMin`/`rawMax`/`rawStep` — how many
+  distinguishable states that instrument can report, `null` for an open-ended scale (the kitchen scale's
+  grams). Lets a consumer (the ordinal capture control, the API's confidence engine) ask "how coarse is
+  this instrument" without hand-typing a number that could silently disagree with the row it describes.
+  Throws, rather than returning a bogus count, when a row's own scale is malformed (`rawStep <= 0`, or a
+  closed `rawMax` below `rawMin`).
+- **`rawValueRangeRefinement`**, the raw-value-in-scale bound extracted out of `soilReadingCreateSchema`'s
+  own `superRefine` so a sibling schema (the API's read-only watering-verdict preview) can enforce the
+  identical bound without pasting it a second time. Additive: `soilReadingCreateSchema`'s own behaviour is
+  unchanged, it now simply calls the extracted function.
+- **`Recommendation` / `HoldBasis` / `UnavailableReason`-shaped unions promoted to the shared contract**, at
+  a new `watering-verdict-constants.ts` (Zod-free, same pattern as `soil-instrument-constants.ts`) and
+  re-exported from `index.ts` and its own package subpath. These were closed literal unions the API's
+  watering-verdict engine computes and the web only reads; deriving both sides' types from one array — the
+  same fix `photo-contract-constants.ts` already made for the photo pipeline's status machine — means the
+  two can never silently diverge on a renamed or added value.
+
 ## 0.26.0
 
 ### Added
