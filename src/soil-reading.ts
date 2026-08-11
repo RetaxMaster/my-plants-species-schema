@@ -111,6 +111,85 @@ function offStepReason(instrumentId: InstrumentId, value: number): string | null
   return null;
 }
 
+/**
+ * HOW FAR BELOW ITS OWN DRY ANCHOR, AND ABOVE ITS OWN SATURATED ANCHOR, A POT'S READING MAY STILL BE HONEST
+ * — measured in SPANS, where one span is `saturatedValue - dryValue` for that pot.
+ *
+ * ⚠️ THESE ARE TUNED CONSTANTS. They are chosen, not derived, and they carry a `docs/care-engine.md` §7.10
+ * ledger row of their own (§7.20.18 is the argument). Do not change either number without amending both.
+ *
+ * WHY A BAND AT ALL (QA round 4, DEF-4). With a pot calibrated `watered 2000 g / dry 1500 g`, entering
+ * `99999999` grams SAVED, clamped to 100 % moisture, and rescheduled the watering. `0` and `12.7` were
+ * accepted the same way. The clamp is what makes this invisible: `normaliseReading` maps every absurd value
+ * into a perfectly legal `[0,1]` fraction, and the estimator then treats it as a real anchor. That is the
+ * same failure class `offScaleReason` above was written for — a fabricated number inside a legal range —
+ * except that the kitchen scale's `rawMax` is `null` (grams genuinely are open-ended), so no DECLARED scale
+ * can bound it. What CAN bound it is this pot's own calibration: once the owner has weighed this pot dry and
+ * this pot watered, the system finally owns a per-pot mass scale, and the span between those two anchors is
+ * the only such scale it will ever have. So the band is expressed in spans and never in grams.
+ *
+ * ⚠️ IT MUST REFUSE THE ABSURD WITHOUT POLICING THE PLAUSIBLE, and that is why it is generous. A real pot
+ * legitimately leaves its own anchors in both directions: it is heavier than the "watered" anchor in the
+ * minutes after a deep watering (and heavier still if it stands in a saucer that caught the runoff), and it
+ * is lighter than the "dry" anchor in a heatwave, because "dry" is the owner's *time to water* weight and
+ * not bone dry. A guard clamped at the anchors would reject honest readings, which is the worse failure.
+ *
+ * ⚠️ AND IT IS ASYMMETRIC ON PURPOSE — the two directions are not the same physical question. Mass can be
+ * ADDED to a pot in honest ways with no natural ceiling (water, standing runoff, and a plant that has grown
+ * since the day it was calibrated), so the upper allowance is TWO spans. Mass can only be REMOVED down to
+ * the dry solids — pot, substrate and plant, none of which evaporate — so below the dry anchor there is
+ * only the residual water that was still present when the owner took that anchor, which is bounded by
+ * roughly one cycle's worth. Hence ONE span below.
+ *
+ * What the band catches, which is the point: every order-of-magnitude typo. On the 2000/1500 pot it admits
+ * 1000 g … 3000 g and refuses `0`, `12.7`, `150` (a dropped zero), `20000` (an extra one) and `99999999`.
+ */
+export const READING_PLAUSIBLE_SPANS_BELOW_DRY = 1;
+export const READING_PLAUSIBLE_SPANS_ABOVE_SATURATED = 2;
+
+/**
+ * IS THIS READING PLAUSIBLE FOR **THIS POT**? Returns why it is not, or `null`.
+ *
+ * The sibling of `offScaleReason` above, and deliberately a SEPARATE function rather than a widening of it:
+ * that one asks "can this INSTRUMENT produce this value?" and needs nothing but the contract row, so it can
+ * live inside a Zod refinement at the HTTP edge. This one asks "can THIS POT weigh this?" and needs the
+ * per-(plant, instrument) calibration, which only the API holds and only after a database read — so it is
+ * called by the write core and by the verdict preview, never from a body schema. Two questions, two
+ * functions, one home; a single function taking an optional calibration would silently answer the first
+ * question while looking like it answered both.
+ *
+ * `null` calibration returns `null`: an instrument that needs no anchors (the ordinal probe, the stick, the
+ * finger) is already fully bounded by its own declared scale, and an instrument that needs them but has
+ * none produces a NULL wetness anyway — a reading the estimator skips, which is honest and must stay
+ * recordable. There is no pot scale to judge against in either case, and inventing one would be the guess
+ * this whole feature exists to delete.
+ *
+ * A degenerate span (`<= 0`) also returns `null`: `instrumentCalibrationSchemaFor` already refuses to store
+ * one, and bounding a value against a ruler of zero length is not a check.
+ *
+ * The message is written to read correctly after a field name (`rawValue`) is prefixed to it, exactly as
+ * `offScaleReason`'s is — the two are surfaced through the same 400s.
+ */
+export function implausibleForPotReason(
+  value: number,
+  calibration: { saturatedValue: number; dryValue: number } | null | undefined,
+): string | null {
+  if (calibration == null) return null;
+  const span = calibration.saturatedValue - calibration.dryValue;
+  if (!(span > 0) || !Number.isFinite(span)) return null;
+  const floor = calibration.dryValue - READING_PLAUSIBLE_SPANS_BELOW_DRY * span;
+  const ceiling = calibration.saturatedValue + READING_PLAUSIBLE_SPANS_ABOVE_SATURATED * span;
+  if (value < floor || value > ceiling) {
+    return (
+      `${value} is not a plausible reading for this pot, whose own calibration runs ` +
+      `${calibration.dryValue} (dry) to ${calibration.saturatedValue} (watered) — ` +
+      `expected something between ${floor} and ${ceiling}. Check the value, or re-calibrate the pot if it ` +
+      'has genuinely changed.'
+    );
+  }
+  return null;
+}
+
 /** What the owner decided AFTER taking the reading (spec §4.8). A verdict maps onto a path that already
  *  exists — a WATER postpone or the existing early-water DONE — never onto a new scheduling rule. */
 export const READING_VERDICTS = ['NONE', 'POSTPONE', 'WATER_NOW'] as const;
@@ -268,6 +347,13 @@ export type InstrumentCalibration = z.infer<typeof instrumentCalibrationSchema>;
  * shipping a constant nobody can derive. The physically IMPOSSIBLE half is refused here; the merely
  * implausible half is made visible and correctable instead, by the calibration editor the same fix round
  * added. See §7.20.12.
+ *
+ * ⚠️ AND THAT RULING IS UNCHANGED BY THE 2026-08-11 PLAUSIBILITY BAND (`implausibleForPotReason`, QA round
+ * 4, DEF-4) — the two are about different moments, and conflating them would break this one. That band
+ * judges a READING against anchors the pot ALREADY HAS. At CALIBRATION time there are no prior anchors: the
+ * owner is establishing the ruler, so there is nothing to judge him against, and inventing a ceiling here
+ * would be exactly the constant §7 forbids. An absurd ANCHOR is still made visible and correctable rather
+ * than refused; an absurd READING on a calibrated pot is now refused. See §7.20.18.
  */
 export function instrumentCalibrationSchemaFor(instrumentId: InstrumentId) {
   return instrumentCalibrationSchema.superRefine((v, ctx) => {

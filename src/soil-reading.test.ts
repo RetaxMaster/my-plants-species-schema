@@ -6,6 +6,9 @@ import {
   soilReadingCreateSchema,
   instrumentCalibrationSchema,
   instrumentCalibrationSchemaFor,
+  implausibleForPotReason,
+  READING_PLAUSIBLE_SPANS_ABOVE_SATURATED,
+  READING_PLAUSIBLE_SPANS_BELOW_DRY,
   rawValueRangeRefinement,
   wateringRelationEnum,
   WATERING_RELATIONS,
@@ -344,5 +347,87 @@ describe('the Zod layer DERIVES from the table — adding a row needs no edit he
       });
       expect(parsed.success).toBe(true);
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+// `implausibleForPotReason` — QA round 4, DEF-4 (LOW, confirmed reproducible).
+//
+// The complaint QA measured: with a pot calibrated `watered 2000 g / dry 1500 g`, `99999999` grams SAVED,
+// clamped to 100 % moisture and rescheduled the watering; `0` and `12.7` were accepted with no message
+// either. The galvanic probe validated properly, because its scale is CLOSED — so this gap was exactly the
+// one instrument whose `rawMax` is `null` by contract, and the fix had to come from the pot rather than
+// from the instrument table.
+//
+// ⚠️ THE TEST FILE THAT PINS THE BAND IN BOTH DIRECTIONS. A guard is easy to write so wide it can never
+// fire; each block below therefore states BOTH what is refused and what is still ACCEPTED right next to it.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+describe('implausibleForPotReason (QA round 4, DEF-4)', () => {
+  // The pot from QA's own repro. span = 500 g, so the band is [1500 - 500, 2000 + 2*500] = [1000, 3000].
+  const pot = { saturatedValue: 2000, dryValue: 1500 };
+
+  it('refuses the three values QA saved with a 201', () => {
+    for (const absurd of [99999999, 0, 12.7]) {
+      expect(implausibleForPotReason(absurd, pot)).not.toBeNull();
+    }
+  });
+
+  it('refuses the order-of-magnitude typos in both directions', () => {
+    expect(implausibleForPotReason(150, pot)).not.toBeNull(); // a dropped zero
+    expect(implausibleForPotReason(20000, pot)).not.toBeNull(); // an extra one
+  });
+
+  // ⚠️ THE HALF THAT MATTERS MOST, AND THE ONE A CARELESS GUARD BREAKS. A real pot leaves its anchors: it
+  // is heavier than "watered" right after a deep watering (or with runoff standing in its saucer), and
+  // lighter than "dry" in a heatwave, because "dry" is the owner's time-to-water weight and not bone dry.
+  // Tightening either constant to 0 — i.e. clamping the band at the anchors — turns every case here RED.
+  it('ACCEPTS honest readings outside the anchors, which is what the band is generous FOR', () => {
+    expect(implausibleForPotReason(2400, pot)).toBeNull(); // just watered, saucer caught the runoff
+    expect(implausibleForPotReason(1200, pot)).toBeNull(); // a heatwave took it past the dry anchor
+    expect(implausibleForPotReason(2600, pot)).toBeNull(); // a plant that grew since calibration
+  });
+
+  // The boundary is a DECISION, not an accident of which operator was typed: the band is INCLUSIVE at both
+  // ends, matching `offScaleReason`'s own inclusive `rawMin`/`rawMax` treatment directly above.
+  it('is inclusive at both ends, and refuses one step beyond each', () => {
+    expect(implausibleForPotReason(1000, pot)).toBeNull();
+    expect(implausibleForPotReason(3000, pot)).toBeNull();
+    expect(implausibleForPotReason(999.9, pot)).not.toBeNull();
+    expect(implausibleForPotReason(3000.1, pot)).not.toBeNull();
+  });
+
+  // ⚠️ THE ASYMMETRY IS THE PHYSICS, AND THIS IS WHAT SAYS SO. Mass can be ADDED to a pot without a natural
+  // ceiling (water, runoff, growth); it can only be REMOVED down to solids that do not evaporate. Making
+  // the two constants equal in EITHER direction turns one of these two cases red.
+  it('allows twice as far above the saturated anchor as below the dry one', () => {
+    expect(READING_PLAUSIBLE_SPANS_ABOVE_SATURATED).toBe(2 * READING_PLAUSIBLE_SPANS_BELOW_DRY);
+    expect(implausibleForPotReason(2000 + 2 * 500, pot)).toBeNull(); // two spans up: fine
+    expect(implausibleForPotReason(1500 - 2 * 500, pot)).not.toBeNull(); // two spans down: refused
+  });
+
+  // NO CALIBRATION, NO RULER — and that is not a hole. An instrument that needs no anchors is already fully
+  // bounded by its own declared scale (`offScaleReason`), and one that needs them but has none yields a
+  // NULL wetness the estimator skips: honest, and it must stay recordable. Returning a reason here would
+  // block a reading the contract deliberately accepts.
+  it('judges nothing without a calibration', () => {
+    expect(implausibleForPotReason(99999999, null)).toBeNull();
+    expect(implausibleForPotReason(99999999, undefined)).toBeNull();
+  });
+
+  // A degenerate span is refused at the CALIBRATION seam (`instrumentCalibrationSchemaFor`); bounding a
+  // value against a ruler of zero length is not a check, so this one declines to answer rather than
+  // dividing by nothing.
+  it('judges nothing against a degenerate span', () => {
+    expect(implausibleForPotReason(99999999, { saturatedValue: 2000, dryValue: 2000 })).toBeNull();
+  });
+
+  // The message has to read correctly after `rawValue` is prefixed to it — the same contract
+  // `offScaleReason`'s message carries, because both are surfaced through the same 400.
+  it('names both anchors and the expected band, so the owner can act on it', () => {
+    const reason = implausibleForPotReason(99999999, pot)!;
+    expect(`rawValue ${reason}`).toContain('rawValue 99999999 is not a plausible reading for this pot');
+    expect(reason).toContain('1500 (dry)');
+    expect(reason).toContain('2000 (watered)');
+    expect(reason).toContain('between 1000 and 3000');
   });
 });

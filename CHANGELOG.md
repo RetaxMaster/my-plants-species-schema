@@ -71,6 +71,24 @@ changed for whoever depends on this package, not a commit dump.
   same fix `photo-contract-constants.ts` already made for the photo pipeline's status machine — means the
   two can never silently diverge on a renamed or added value.
 
+- **`implausibleForPotReason(rawValue, calibration)` + `READING_PLAUSIBLE_SPANS_BELOW_DRY` /
+  `READING_PLAUSIBLE_SPANS_ABOVE_SATURATED` (0.30.2).** The sibling of `offScaleReason`, and deliberately a
+  separate function rather than a widening of it: that one asks *"can this INSTRUMENT produce this value?"*
+  and needs only the contract row, so it can live inside a Zod refinement at the HTTP edge; this one asks
+  *"can THIS POT weigh this?"* and needs the per-(plant, instrument) calibration, which only the API holds.
+  It exists because `kitchen-scale.rawMax` is `null` by contract — grams genuinely are open-ended — so the
+  one instrument that has a per-pot calibration had no ceiling at all: `99999999 g` was accepted, clamped to
+  a perfectly legal 100 % wetness, and rescheduled the plant. A calibrated pot's two anchors are the only
+  per-pot mass scale that exists, so the band is expressed in **spans** (`saturated − dry`) and never in
+  grams: one span below the dry anchor, two above the saturated one, inclusive. The asymmetry is physical —
+  a pot gains mass in honest ways with no natural ceiling (a deep watering, runoff in the saucer, a plant
+  that grew), and loses it only down to solids that do not evaporate. `null`/`undefined` calibration returns
+  `null`: with no anchors there is no ruler, and an uncalibrated reading must stay recordable. The two
+  constants are **tuned** and carry their own `docs/care-engine.md` §7.10 ledger row (§7.20.18 is the
+  argument). ⚠️ It deliberately does **not** touch `instrumentCalibrationSchemaFor`'s open ceiling on the
+  ANCHORS: at calibration time there are no prior anchors to judge against, and inventing one there would be
+  exactly the underived constant §7 forbids.
+
 ### Changed
 
 - **⚠️ Breaking: `soilReadingCreateSchema` no longer carries `wateringRelation`.** The field was added in
