@@ -9,6 +9,8 @@ import {
   rawValueRangeRefinement,
   wateringRelationEnum,
   WATERING_RELATIONS,
+  READING_VERDICTS,
+  verdictIsAnswer,
   type SoilReadingCreate,
 } from './soil-reading.js';
 import { INSTRUMENT_IDS, INSTRUMENT_LIST, READING_KINDS } from './soil-instrument-constants.js';
@@ -90,6 +92,49 @@ describe('the Zod layer is DERIVED from the constant arrays (no fork)', () => {
 
   it('WATERING_RELATIONS is closed to exactly BEFORE and AFTER', () => {
     expect(WATERING_RELATIONS).toEqual(['BEFORE', 'AFTER']);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------
+// `verdictIsAnswer` — ONE definition, three callers, two runtimes (hoisted here 2026-08-11).
+//
+// It lived TWICE before this: `my-plants-api/src/soil-readings/todays-reading.ts` (the read side, and
+// since QA finding 6 the write side too) and `my-plants-web/utils/waterSurvey.ts` (the edit dialog). Both
+// copies were correct and both were tested — which is exactly why the fork was worth removing rather than
+// worth watching: nothing would have gone red the day one of them changed.
+// ---------------------------------------------------------------------------------------------------
+describe('verdictIsAnswer', () => {
+  // ⚠️ MUTATION THIS PINS (direction: NOT UNDER-BROAD). Hard-code `return false`, or add `'WATER_NOW'` /
+  // `'POSTPONE'` to the non-answer side, and this case goes red. Without it the read side would let an
+  // evening voluntary log supersede the morning survey's answer, and the write side would let an edit
+  // erase it.
+  it('counts a real decision as an answer', () => {
+    expect(verdictIsAnswer('WATER_NOW')).toBe(true);
+    expect(verdictIsAnswer('POSTPONE')).toBe(true);
+  });
+
+  // ⚠️ MUTATION THIS PINS (direction: NOT OVER-BROAD). Hard-code `return true` — or flip the comparison to
+  // `===` — and this case goes red. Without it every voluntary log would count as an answer, which is the
+  // live defect the 2026-08-11 one-reading-per-day ruling closed: storing a measurement would silently
+  // answer a question nobody had asked.
+  it('counts "nothing decided" as the ABSENCE of an answer, never one of them', () => {
+    expect(verdictIsAnswer('NONE')).toBe(false);
+  });
+
+  // The derivation, asserted as a derivation. Every member of the vocabulary EXCEPT `'NONE'` is an answer,
+  // read off `READING_VERDICTS` itself rather than re-listed here — so adding a fourth verdict to the
+  // array without deciding what it means makes this case speak up, in the safe direction the function's
+  // own comment argues for.
+  it('treats every verdict except "NONE" as an answer, derived from the vocabulary itself', () => {
+    expect(READING_VERDICTS.filter((v) => !verdictIsAnswer(v))).toEqual(['NONE']);
+  });
+
+  // ⚠️ THE SAFE DEFAULT, PINNED. An unrecognised value — a verdict written by a future version, a column
+  // read from a row this build does not know about — is an ANSWER. A new answer silently ignored is an
+  // invisible regression; a new non-answer wrongly honoured shows up the first time it is used. This case
+  // is what stops a well-meaning "unknown means nothing decided" rewrite from inverting that choice.
+  it('classifies an unrecognised verdict as an answer, never as the absence of one', () => {
+    expect(verdictIsAnswer('SOME_FUTURE_VERDICT')).toBe(true);
   });
 });
 

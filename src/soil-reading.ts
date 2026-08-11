@@ -117,6 +117,58 @@ export const READING_VERDICTS = ['NONE', 'POSTPONE', 'WATER_NOW'] as const;
 export type ReadingVerdict = (typeof READING_VERDICTS)[number];
 export const readingVerdictEnum = z.enum(READING_VERDICTS);
 
+/**
+ * THE ONE VERDICT THAT MEANS "NOTHING WAS DECIDED", named rather than typed as a literal inside
+ * `verdictIsAnswer` below. `satisfies ReadingVerdict` is what makes the derivation self-checking: the day
+ * this vocabulary is renamed or this member removed, the predicate stops COMPILING instead of quietly
+ * classifying every verdict as an answer.
+ *
+ * Module-private on purpose. Nothing outside needs the value — what the outside needs is the QUESTION the
+ * function below answers, and exporting the constant would invite a fourth hand-written `=== 'NONE'`
+ * comparison, which is exactly the fork this module exists to prevent.
+ */
+const NON_ANSWER_VERDICT = 'NONE' satisfies ReadingVerdict;
+
+/**
+ * DID THIS VERDICT **ANSWER** THE DAY'S WATERING QUESTION? `'NONE'` is the ABSENCE of an answer, never one
+ * of them: it is what a voluntary "Agregar lectura" writes, and what a survey writes when no calibration
+ * could interpret the raw value.
+ *
+ * ⚠️ IT LIVES HERE, IN THE SHARED CONTRACT, BECAUSE THREE CALLERS IN TWO RUNTIMES ASK IT — AND TWO OF THEM
+ * ONCE HELD THEIR OWN COPY (hoisted 2026-08-11, code review; docs/care-engine.md §7.20.15/§7.20.17). The
+ * three questions are genuinely the same question, asked at three seams:
+ *
+ *   • the API's READ side (`my-plants-api/src/soil-readings/todays-reading.ts`) — which of a day's readings
+ *     speaks for that day, where an answer must outrank a non-answer whatever order they were recorded in;
+ *   • the API's WRITE side (`soil-reading.write-core.ts`) — a voluntary edit posting `'NONE'` must not
+ *     erase the answer a survey already stored on that same row;
+ *   • the WEB (`my-plants-web/utils/waterSurvey.ts`) — the edit dialog has to know whether the row it is
+ *     about to replace carries an answer worth restating.
+ *
+ * Until this hoist the rule existed TWICE — once in the API, once in the web, the web's copy naming the
+ * API's as the definition. Both were correct and both were tested, and that is precisely the shape this
+ * workspace names as its highest-yield bug class: parallel copies of one rule in two runtimes, where a
+ * contract change has to remember both. It is now stated once, beside the vocabulary it is derived from,
+ * and imported by every caller.
+ *
+ * DERIVED FROM THE ONE VERDICT THAT MEANS "NOTHING DECIDED" rather than listed as "the answers", so A
+ * FUTURE FOURTH VERDICT IS DECISIVE BY DEFAULT. That is the safe direction, and it is a decision rather
+ * than a convenience: a new ANSWER that this function ignored would be a silent regression (the read side
+ * would let a non-answer supersede it, the write side would let an edit erase it, and nothing would fail),
+ * while a new NON-ANSWER wrongly honoured as an answer is visible the very first time it is used.
+ *
+ * ⚠️ THE PARAMETER IS `string`, NOT `ReadingVerdict`, AND THAT IS DELIBERATE. The API's read side reduces
+ * rows whose `verdict` column arrives as a bare `string` (both of its callers `select` raw columns and do
+ * not cast before asking this question), so a narrower parameter would only move the problem: it would buy
+ * a compile-time check at one call site by forcing an `as ReadingVerdict` assertion at two others, and an
+ * assertion over an unvalidated DB column is a lie the compiler then believes. A `ReadingVerdict` is
+ * already a `string`, so the typed callers lose nothing they had; and an unrecognised value is classified
+ * as an ANSWER, which is the same safe default the derivation above chooses on purpose.
+ */
+export function verdictIsAnswer(verdict: string): boolean {
+  return verdict !== NON_ANSWER_VERDICT;
+}
+
 /** Which side of that day's watering a reading fell on, for a reading taken on a day the plant was ALSO
  *  watered. The drying-rate window is fenced INCLUSIVE of the last watering day, so a row measured on that
  *  exact day reaches the estimator's input seam and this value is what places it.

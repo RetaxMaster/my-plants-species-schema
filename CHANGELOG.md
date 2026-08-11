@@ -10,6 +10,16 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
+- **`verdictIsAnswer(verdict)` — "did this reading decide anything?" — now lives here, once, beside
+  `READING_VERDICTS`.** It answers the question three different seams need: which of a day's readings
+  speaks for that day, whether an edit that decides nothing may overwrite an answer already stored, and
+  whether the edit dialog is about to replace a reading worth restating. Until now the API and the web each
+  carried their own copy of it, both correct and both tested — which is exactly the situation where a
+  future change to the verdict vocabulary quietly updates one of them. It is derived from the single
+  verdict that means "nothing decided" (`NONE`) rather than from a list of the decisive ones, so a fourth
+  verdict added later counts as an answer by default: a new answer that went unnoticed would be silent,
+  while a new non-answer mistakenly treated as one shows up the first time it is used.
+
 - **A calibration anchor is now held to the instrument's own scale, not just to the other anchor.**
   `instrumentCalibrationSchema` is instrument-agnostic — it never sees an instrument id — so
   `saturatedValue > dryValue` was the only rule it could enforce, and `{ saturatedValue: 2000, dryValue:
