@@ -61,6 +61,29 @@ changed for whoever depends on this package, not a commit dump.
   same fix `photo-contract-constants.ts` already made for the photo pipeline's status machine — means the
   two can never silently diverge on a renamed or added value.
 
+### Changed
+
+- **⚠️ Breaking: `soilReadingCreateSchema` no longer carries `wateringRelation`.** The field was added in
+  0.25.0 so a reading taken on a day the plant was *also* watered could say which side of that watering it
+  fell on, rather than being thrown away. It turns out only half of that ambiguity is real. A reading dated
+  the plant's own **today** is answerable from the ordering already on file — a watering recorded for today
+  was recorded *before* the write that is happening now — so the API derives the answer instead of asking
+  for it, and this schema, which every surface shares, must not carry a field no caller should ever supply.
+  A **back-dated** reading on a watering day stays genuinely unknowable (care events store a date and no
+  time, so nothing recovers the order) and is still asked about — but through the API's own request DTO,
+  which extends this schema, not through the shared contract itself.
+  **`WATERING_RELATIONS`, `WateringRelation` and `wateringRelationEnum` are unchanged and still exported**:
+  the vocabulary, the read type and the stored column all stay exactly as they were, so nothing already
+  recorded is reinterpreted. What changed is only which schema accepts the field on the way in. A consumer
+  that still sends it on a create body will have it silently stripped by Zod, which is precisely why the
+  API stopped validating that route with the bare shared schema.
+- **`wateringRelation`'s documented meaning is corrected.** Its doc comment claimed the value designates the
+  admitted reading as a saturated anchor and forces its wetness to ≈ 1. It does no such thing and never did:
+  it is an **admission filter** and nothing more — on the fenced watering day a row is kept when the value
+  says `AFTER` and dropped otherwise (`BEFORE` is the previous cycle's tail, `NULL` is unknown and is never
+  guessed), and an admitted row is then fitted at exactly the wetness it measured. No behaviour changed; the
+  description of it was wrong, and a consumer reading it could have built on a guarantee that was not there.
+
 ## 0.26.0
 
 ### Added
