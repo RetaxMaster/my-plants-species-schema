@@ -135,10 +135,12 @@ export const soilReadingCreateSchema = z
     verdict: readingVerdictEnum.default('NONE'),
     /** Required by, and ONLY by, a POSTPONE verdict. */
     postponeToOn: strictYmd.optional(),
-    /** Answers "was this taken before or after that day's watering?" — meaningful ONLY on a day the plant
-     *  was watered. Absent means UNKNOWN, never "before": a same-day reading with this field unset is
-     *  excluded from the drying-rate fit rather than guessed onto either side of the watering. */
-    wateringRelation: wateringRelationEnum.optional(),
+    // ⚠️ NO `wateringRelation` HERE, and its absence is the design (owner-ruled 2026-08-10, §7.20.4).
+    // A reading dated the plant's own today needs no answer — a watering already recorded for today was
+    // recorded BEFORE this moment, so the reading sits inside the cycle that watering opened, and the API
+    // DERIVES it. A back-dated reading on a watering day is genuinely unknowable (care events store a
+    // date, not a time), so the API asks for it there — through its own DTO, not through this schema,
+    // which every surface shares. The enum below stays exported for the column and the read type.
   })
   // Shared, so BOTH layers enforce it: this schema validates the owner's HTTP body at the API edge and is
   // the same module the web imports its bounds from — and now also the SAME function the read-only verdict

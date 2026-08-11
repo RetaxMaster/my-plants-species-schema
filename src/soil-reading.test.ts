@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
   instrumentIdEnum,
   readingKindEnum,
@@ -9,6 +9,7 @@ import {
   rawValueRangeRefinement,
   wateringRelationEnum,
   WATERING_RELATIONS,
+  type SoilReadingCreate,
 } from './soil-reading.js';
 import { INSTRUMENT_IDS, INSTRUMENT_LIST, READING_KINDS } from './soil-instrument-constants.js';
 
@@ -176,22 +177,32 @@ describe('soilReadingCreateSchema', () => {
     ).toBe(false);
   });
 
-  describe('wateringRelation — the same-day-reading disambiguation (owner-ruled, 2026-08-08)', () => {
-    it('is optional — absent means UNKNOWN, and the field is simply not present in the parsed output', () => {
-      const parsed = soilReadingCreateSchema.parse({ ...base });
-      expect(parsed.wateringRelation).toBeUndefined();
+  // ⚠️ RETIRED FROM THE WRITE PATH 2026-08-10 (owner-ruled). This block used to assert that
+  // `soilReadingCreateSchema` ACCEPTS `wateringRelation`. It no longer travels on the wire: the API derives
+  // it for a today-dated reading and asks for it only on a back-dated one, where the API's own DTO carries
+  // it. The VOCABULARY stays exported, because the database column, the read type and that voluntary write
+  // all still need it — see docs/care-engine.md §7.20.4.
+  describe('wateringRelation is no longer part of the create contract', () => {
+    // COMPILE-TIME assertion: this is the guarantee that actually matters to the five consumer repos. A
+    // runtime-only check (Zod stripping an unrecognised key) would pass identically for a typo'd key name
+    // or a rename — it proves Zod's default strip mechanic, not that THIS field was deliberately excluded.
+    // `expectTypeOf(...).not.toHaveProperty(...)` fails to COMPILE if `wateringRelation` is ever re-added
+    // to `SoilReadingCreate`, which is the thing every consumer actually depends on.
+    it('SoilReadingCreate no longer offers the key, at the type level', () => {
+      expectTypeOf<SoilReadingCreate>().not.toHaveProperty('wateringRelation');
     });
 
-    it('accepts BEFORE and AFTER', () => {
-      expect(soilReadingCreateSchema.safeParse({ ...base, wateringRelation: 'BEFORE' }).success).toBe(true);
-      expect(soilReadingCreateSchema.safeParse({ ...base, wateringRelation: 'AFTER' }).success).toBe(true);
+    it('an unrecognised wateringRelation is stripped, and the rest of the parse still succeeds intact', () => {
+      const parsed = soilReadingCreateSchema.parse({ ...base, wateringRelation: 'AFTER' });
+      expect(parsed).not.toHaveProperty('wateringRelation');
+      // Guards against a future edit breaking the WHOLE schema rather than just this field — this must
+      // fail if `parse` starts throwing, dropping a known field, or returning a stale default.
+      expect(parsed).toEqual({ ...base, verdict: 'NONE' });
     });
 
-    it('rejects an unknown value — never silently coerced or dropped', () => {
-      expect(
-        soilReadingCreateSchema.safeParse({ ...base, wateringRelation: 'DURING' }).success,
-      ).toBe(false);
-    });
+    // WATERING_RELATIONS / wateringRelationEnum are already asserted verbatim by
+    // `describe('the Zod layer is DERIVED from the constant arrays (no fork)')` above — not re-asserted
+    // here to avoid duplicate coverage that could silently drift from that block.
   });
 });
 
