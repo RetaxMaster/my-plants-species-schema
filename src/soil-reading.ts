@@ -117,10 +117,22 @@ export const READING_VERDICTS = ['NONE', 'POSTPONE', 'WATER_NOW'] as const;
 export type ReadingVerdict = (typeof READING_VERDICTS)[number];
 export const readingVerdictEnum = z.enum(READING_VERDICTS);
 
-/** Disambiguates a reading taken on a day the plant was ALSO watered (the owner-ruled ADMIT-and-ASK design,
- *  2026-08-08): the drying-rate fence is strict-after the last watering, so a same-day row is ambiguous
- *  about which side of the watering it belongs to. `AFTER` places it as the `w ≈ 1` anchor that opens the
- *  new cycle; `BEFORE` places it as the final point of the previous cycle. */
+/** Which side of that day's watering a reading fell on, for a reading taken on a day the plant was ALSO
+ *  watered. The drying-rate window is fenced INCLUSIVE of the last watering day, so a row measured on that
+ *  exact day reaches the estimator's input seam and this value is what places it.
+ *
+ *  ⚠️ IT IS AN ADMISSION FILTER, NOTHING MORE. `admitWateringDayRows`
+ *  (`my-plants-api/src/care-plan/drying-rate-input.ts`) keeps a row measured on the fenced watering day ONLY
+ *  when this column says `AFTER`, and drops it otherwise (`BEFORE` = the previous cycle's tail; `NULL` =
+ *  unknown, never guessed). A row measured on any OTHER day is untouched by it. It does NOT designate the
+ *  admitted row a "saturated anchor" and it does NOT force `w ≈ 1` — the row's own measured `wetness` is
+ *  fitted exactly as stored. Whatever the reading says is what the fit sees.
+ *
+ *  Owner-ruled 2026-08-08 (ADMIT-and-ASK), SPLIT 2026-08-10 — the question is now asked only where it is
+ *  genuinely unanswerable, and the split lives in the API's write core, not here: a reading dated the
+ *  plant's own today has its answer DERIVED (`AFTER`) from the watering already on file, a BACK-DATED one is
+ *  still asked for (care events store a date, not a time, so nothing recovers the order), and a day with no
+ *  watering at all refuses the field and stores `NULL`. `docs/care-engine.md` §7.20.4. */
 export const WATERING_RELATIONS = ['BEFORE', 'AFTER'] as const;
 export type WateringRelation = (typeof WATERING_RELATIONS)[number];
 export const wateringRelationEnum = z.enum(WATERING_RELATIONS);
