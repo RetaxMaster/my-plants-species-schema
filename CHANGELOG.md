@@ -89,6 +89,17 @@ changed for whoever depends on this package, not a commit dump.
   ANCHORS: at calibration time there are no prior anchors to judge against, and inventing one there would be
   exactly the underived constant §7 forbids.
 
+- **The shared one-per-day care-write outcome type (0.31.0).** A discriminated contract distinguishing
+  whether a care-task submission was *applied* (the task was completed and recorded in the system) from
+  *already-recorded-on-that-day* (this task was already done on the calendar day the submission named, so the
+  system can advise the agent to choose a different action). Until now the API, the web, and the agent
+  mediator each carried their own definition of this result — which is exactly the situation where contract
+  ambiguity stays undetected because different implementations that agree all stay green. Consumers now import
+  `careWriteOutcomeEnum` and its `CareWriteOutcome` type here once, never re-derive the distinction. It is
+  **day-scoped, not today-scoped**: the outcome describes the day the submission itself named, so asking
+  "was WATER already completed on 2026-08-12?" can have a different answer than today, and the proposal
+  mediator must answer both questions correctly and independently.
+
 ### Changed
 
 - **⚠️ Breaking: `soilReadingCreateSchema` no longer carries `wateringRelation`.** The field was added in
