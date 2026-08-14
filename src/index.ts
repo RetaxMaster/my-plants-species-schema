@@ -16,6 +16,7 @@ export * from './image-limits.js';
 export * from './photo-contract-constants.js';
 export * from './progress-tag-constants.js';
 export * from './care-operations-constants.js';
+export * from './care-outcome.js';
 export * from './proposal-operations.js';
 export * from './calendar-date.js';
 export * from './idempotency-constants.js';
