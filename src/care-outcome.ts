@@ -96,24 +96,37 @@ export type SubstrateAnchorOutcome = z.infer<typeof substrateAnchorOutcomeSchema
  * BOTH arms rather than only on `already-recorded-on-day` because the pairing is free: a REPOT that DID
  * write its care event can still have had its anchor kept.
  *
- * ⚠️ `potDetailsDiscarded` — THE ONE CASE WHERE WHAT THE OWNER TYPED HAS NOWHERE TO GO (F4,
- * nothing-left-open code review, 2026-08-14). A REPOT completion carries the NEW pot's diameter and soil
- * mix. When the submitted day is strictly OLDER than the stored anchor, the profile write is skipped
- * (Ruling 1 — the event does not describe the pot's current fill), and TWO different things can follow:
+ * ⚠️ `potDetailsDiscarded` — THE ONE CASE WHERE WHAT THE OWNER TYPED HAS NOWHERE VISIBLE TO GO (F4,
+ * nothing-left-open code review, 2026-08-14; AMENDED F5, 2026-08-15). A REPOT completion carries the NEW
+ * pot's diameter and soil mix. When the submitted day is strictly OLDER than the stored anchor, the profile
+ * write is skipped (Ruling 1 — the event does not describe the pot's current fill), and TWO different
+ * things can follow:
  *
- *   - the submission is NOT a same-day duplicate → a `CareEvent` IS written, and the values ride on its own
- *     `payload` (`potDetailsNotApplied`). Nothing is lost: *"recorded as history"* means the history keeps
- *     its own facts. This arm never sets the flag — there is no discard to report;
- *   - the submission is ALSO a same-day duplicate → the one-per-day rule writes NO `CareEvent` at all, so
- *     there is nowhere to attach anything and the values are genuinely gone. THIS is what the flag reports,
- *     and it is not an exotic corner: it is finding E8's own measured 197-day case.
+ *   - the submission is NOT a same-day duplicate → a `CareEvent` IS written (`status: 'applied'`), and the
+ *     values ride on its own `payload` (`potDetailsNotApplied`);
+ *   - the submission is ALSO a same-day duplicate → the one-per-day rule writes NO `CareEvent` at all
+ *     (`status: 'already-recorded-on-day'`), so there is nowhere to attach anything.
+ *
+ * ⚠️ F5 AMENDMENT (owner ruling, 2026-08-15) — THE FLAG NOW APPEARS ON *EITHER* ARM, WHICH IS WHY IT IS
+ * DECLARED ON BOTH BRANCHES BELOW RATHER THAN ONLY ON `already-recorded-on-day`. The original F4 ruling
+ * (kept below for the record) reasoned that the FIRST case above "loses nothing" because the `CareEvent`
+ * payload keeps the values — true, and insufficient: that payload has no surface the owner can read, so a
+ * value that survives only there is, to him, a value that vanished. The `applied` arm's own PROFILE write
+ * was skipped by the same Ruling-1 refusal that put it on this branch in the first place, so it needs the
+ * identical sentence the `already-recorded-on-day` arm always earned. `already-recorded-on-day` still keeps
+ * its OWN copy of the field (never inherited from a shared base) because the two arms are independent Zod
+ * object shapes in this discriminated union — there is no supertype to hang one declaration off of.
+ *
+ * ---- THE ORIGINAL F4 REASONING (2026-08-14), for the record ---------------------------------------------
+ * "Nothing is lost: *'recorded as history'* means the history keeps its own facts. [The `applied`] arm
+ * never sets the flag — there is no discard to report." F5 above is why that stopped being the whole story.
  *
  * ⚠️ IT IS SET BY THE SERVER, AND A READER MUST NOT RE-DERIVE IT. The combination
- * (`already-recorded-on-day` + `otherEffectsApplied: false` + `task: 'REPOT'`) looks like it says the same
- * thing, and it does not: the owner may legitimately submit "I don't know" for BOTH the diameter and the
- * mix, and telling him his pot details were discarded when he typed none would be a false sentence. Only
- * the writer knows whether anything was supplied. This is also the shape that hid E8 — a fact re-derived
- * from a neighbouring value instead of stated.
+ * (`otherEffectsApplied: false` + `task: 'REPOT'`) looks like it says the same thing, and it does not: the
+ * owner may legitimately submit "I don't know" for BOTH the diameter and the mix, and telling him his pot
+ * details were discarded when he typed none would be a false sentence. Only the writer knows whether
+ * anything was supplied. This is also the shape that hid E8 — a fact re-derived from a neighbouring value
+ * instead of stated.
  *
  * `z.literal(true).optional()` rather than a plain boolean, on purpose: there is no honest `false` to
  * report. Every other outcome either had somewhere to put the values or never carried any, and an explicit
@@ -125,6 +138,10 @@ export const careWriteOutcomeSchema = z.discriminatedUnion('status', [
     status: z.literal('applied'),
     /** Present only on a REPOT completion — see the `substrate` note above. */
     substrate: substrateAnchorOutcomeSchema.optional(),
+    /** THE POT DETAILS THE OWNER TYPED WENT NOWHERE VISIBLE — see the long note below (F5 amendment,
+     *  2026-08-15: this arm did not carry the field before). Optional, and its ABSENCE means "the question
+     *  does not arise", never "they were applied". */
+    potDetailsDiscarded: z.literal(true).optional(),
   }),
   z.object({
     status: z.literal('already-recorded-on-day'),
@@ -136,8 +153,8 @@ export const careWriteOutcomeSchema = z.discriminatedUnion('status', [
     otherEffectsApplied: z.boolean(),
     /** Present only on a REPOT completion — see the `substrate` note above. */
     substrate: substrateAnchorOutcomeSchema.optional(),
-    /** THE POT DETAILS THE OWNER TYPED WENT NOWHERE — see the long note below. Optional, and its ABSENCE
-     *  means "the question does not arise", never "they were applied". */
+    /** THE POT DETAILS THE OWNER TYPED WENT NOWHERE VISIBLE — see the long note below. Optional, and its
+     *  ABSENCE means "the question does not arise", never "they were applied". */
     potDetailsDiscarded: z.literal(true).optional(),
   }),
 ]);
@@ -174,19 +191,34 @@ export function withSubstrateAnchor(
 }
 
 /**
- * THE ONE PLACE THE "your pot details went nowhere" FLAG IS ATTACHED (F4, 2026-08-14) — the sibling seam to
- * `withSubstrateAnchor`, and for the same reason: passing `false` writes NO key, so an outcome can never
- * accidentally carry a `potDetailsDiscarded: undefined` that a later reader mistakes for an answer.
+ * THE ONE PLACE THE "your pot details went nowhere" FLAG IS ATTACHED (F4, 2026-08-14; AMENDED F5,
+ * 2026-08-15) — the sibling seam to `withSubstrateAnchor`, and for the same reason: passing `false` writes
+ * NO key, so an outcome can never accidentally carry a `potDetailsDiscarded: undefined` that a later reader
+ * mistakes for an answer.
  *
- * The `already-recorded-on-day` guard is a FACT, not a defensive shrug: the flag exists precisely because
- * that arm writes no `CareEvent`, and on the `applied` arm the values have a home (the event's own payload).
- * A caller that reaches this with an `applied` outcome has not lost anything, so there is nothing to report.
+ * ⚠️ F5 AMENDMENT (owner ruling, 2026-08-15) — THE `already-recorded-on-day` STATUS GATE IS GONE, AND THAT
+ * IS DELIBERATE, NOT A REGRESSION. F4's original reasoning (directly below, kept for the record rather than
+ * deleted) held that the `applied` arm never needed the flag because "the values have a home (the event's
+ * own payload)". That is still TRUE, and it is no longer ENOUGH: a value that survives only inside a
+ * `CareEvent` payload the owner has no surface to read is, to the owner looking at his plant's profile, a
+ * value that vanished — the diameter and mix he just typed are nowhere on the page he would check. So the
+ * flag is now set on BOTH arms whenever `discarded` is true — including a NON-duplicate, refused-day
+ * completion, whose `CareEvent` genuinely does carry the payload but whose PROFILE does not. The caller
+ * (`completeRepotCore`) decides `discarded` off the anchor refusal and whether pot details were supplied at
+ * all — never off whether a `CareEvent` was written — so this function no longer has to re-derive that
+ * distinction from `status`.
+ *
+ * ---- THE ORIGINAL F4 REASONING (2026-08-14), for the record ---------------------------------------------
+ * The `already-recorded-on-day` guard used to be a FACT, not a defensive shrug: the flag existed precisely
+ * because that arm writes no `CareEvent`, and on the `applied` arm the values have a home (the event's own
+ * payload). A caller reaching this with an `applied` outcome was said to have lost nothing, so there was
+ * nothing to report. F5 above is why that stopped being the whole story.
  */
 export function withPotDetailsDiscarded(
   outcome: CareWriteOutcome,
   discarded: boolean,
 ): CareWriteOutcome {
-  if (!discarded || outcome.status !== 'already-recorded-on-day') return outcome;
+  if (!discarded) return outcome;
   return { ...outcome, potDetailsDiscarded: true };
 }
 

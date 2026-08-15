@@ -286,9 +286,26 @@ describe('potDetailsDiscarded — the pot details had nowhere to go', () => {
     expect('potDetailsDiscarded' in withPotDetailsDiscarded(duplicate(), true)).toBe(true);
   });
 
-  it('never attaches to an APPLIED outcome — that arm has a CareEvent payload to carry the values', () => {
+  // ⚠️ F5 AMENDMENT (owner ruling, 2026-08-15) — SUPERSEDES the original assertion here (`toEqual({status:
+  // 'applied'})`, i.e. the flag never attached). The original reasoning was that the `applied` arm "has a
+  // CareEvent payload to carry the values", which is true and was found insufficient: that payload sits
+  // inside a history row the app renders nowhere, so the owner's VISIBLE profile still shows the stale
+  // diameter/mix — a value he cannot see is, to him, a value that vanished. The flag now attaches to
+  // EITHER arm; see this module's own `careWriteOutcomeSchema` comment for the full argument.
+  it('DOES attach to an APPLIED outcome now (F5 amendment) — the CareEvent payload is not a visible surface', () => {
     const outcome = withPotDetailsDiscarded(appliedOutcome(), true);
-    expect(outcome).toEqual({ status: 'applied' });
+    expect(outcome).toMatchObject({ status: 'applied', potDetailsDiscarded: true });
+    // POSITIVE CONTROL for the `false` guard below — the same seam still writes NO key when nothing was
+    // discarded, on this arm too.
+    expect(withPotDetailsDiscarded(appliedOutcome(), false)).toEqual({ status: 'applied' });
+  });
+
+  it('the STORED agent-facing array round-trips the flag on the APPLIED arm too', () => {
+    const stored = JSON.stringify([withPotDetailsDiscarded(appliedOutcome(), true)]);
+    const parsed = proposalOperationOutcomesSchema.parse(JSON.parse(stored));
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]!.status).toBe('applied');
+    expect(parsed[0]).toMatchObject({ potDetailsDiscarded: true });
   });
 
   it('does not mutate the outcome it was handed', () => {
