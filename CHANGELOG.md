@@ -8,6 +8,19 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+### Changed
+
+- **The package version moved to `0.35.0`, because the contract's behaviour moved and the version did
+  not.** The `applied` arm of `careWriteOutcomeSchema` gained `potDetailsDiscarded` and the tarball was
+  repacked at the same `0.34.0` it already carried. Every consumer pins this package as a local tarball,
+  so a repack at a standing version changes the integrity hash in five lockfiles while the one thing a
+  consumer actually looks at — the version string — stays put. That is the shape of this workspace's most
+  expensive recurring trap: `npm install` can report "up to date" and leave the OLD build in
+  `node_modules`, and nothing in a green test run distinguishes that from a correct install. The bump is
+  minor because the change itself is purely additive — no existing field, arm or export changed meaning —
+  but the number now moves whenever the behaviour does, which is the only signal a consumer has.
+  Consumers repin to the `0.35.0` tarball; there is nothing else to do.
+
 ### Fixed
 
 - **A kept substrate anchor no longer counts as a full success.** `deriveProposalOutcomeStatus` used to
