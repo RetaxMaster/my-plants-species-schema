@@ -7,6 +7,8 @@ import {
   deriveProposalOutcomeStatus,
   isOnePerDayTask,
   proposalOperationOutcomesSchema,
+  substrateAnchorOutcomeSchema,
+  withSubstrateAnchor,
 } from './care-outcome.js';
 
 describe('ONE_PER_DAY_TASKS', () => {
@@ -108,5 +110,93 @@ describe('proposalOperationOutcomesSchema', () => {
 
   it('rejects a malformed stored array rather than trusting the column', () => {
     expect(proposalOperationOutcomesSchema.safeParse([{ status: 'nope' }]).success).toBe(false);
+  });
+});
+
+describe('substrateAnchorOutcomeSchema', () => {
+  it('accepts both arms, and the day is a strict calendar day', () => {
+    expect(substrateAnchorOutcomeSchema.parse({ status: 'refreshed', refreshedOn: '2026-08-14' })).toEqual({
+      status: 'refreshed',
+      refreshedOn: '2026-08-14',
+    });
+    expect(substrateAnchorOutcomeSchema.parse({ status: 'kept', refreshedOn: '2026-03-01' })).toEqual({
+      status: 'kept',
+      refreshedOn: '2026-03-01',
+    });
+    expect(substrateAnchorOutcomeSchema.safeParse({ status: 'kept', refreshedOn: '2026-02-31' }).success).toBe(false);
+    expect(substrateAnchorOutcomeSchema.safeParse({ status: 'moved', refreshedOn: '2026-03-01' }).success).toBe(false);
+  });
+});
+
+/**
+ * THE FORK THIS FILE EXISTS TO PREVENT (finding E8's agent-facing half).
+ *
+ * `careWriteOutcomeSchema` is a zod object union, so it STRIPS keys it does not declare. While
+ * `SubstrateAnchorOutcome` was hand-declared in the API and mirrored in the web, an anchor outcome attached
+ * to a stored per-operation array survived the write and then VANISHED on the read back — the agent and the
+ * approving owner saw an ordinary success on precisely the write that refused to move the clock.
+ *
+ * ⚠️ EVERY ASSERTION BELOW IS PAIRED WITH A POSITIVE CONTROL. "the anchor is not stripped" is an absence
+ * claim, and an absence claim is satisfied by a world where nothing ran at all — so each case first proves
+ * the array was populated and the surrounding outcome round-tripped, and only then reads the anchor.
+ */
+describe('the substrate anchor SURVIVES the shared outcome contract end to end', () => {
+  const kept = { status: 'kept', refreshedOn: '2026-03-01' } as const;
+  const refreshed = { status: 'refreshed', refreshedOn: '2026-08-14' } as const;
+
+  it('survives careWriteOutcomeSchema on the applied arm', () => {
+    const parsed = careWriteOutcomeSchema.parse({ status: 'applied', substrate: refreshed });
+    // POSITIVE CONTROL — the parse produced a real outcome, so the anchor assertion below is about
+    // stripping and not about an empty result.
+    expect(parsed.status).toBe('applied');
+    expect(parsed.substrate).toEqual(refreshed);
+  });
+
+  it('survives careWriteOutcomeSchema on the already-recorded arm — the E8 pairing', () => {
+    const parsed = careWriteOutcomeSchema.parse({
+      status: 'already-recorded-on-day',
+      task: 'REPOT',
+      occurredOn: '2026-08-14',
+      otherEffectsApplied: true,
+      substrate: kept,
+    });
+    // POSITIVE CONTROL — the whole already-recorded payload round-tripped.
+    expect(parsed).toMatchObject({
+      status: 'already-recorded-on-day',
+      task: 'REPOT',
+      occurredOn: '2026-08-14',
+      otherEffectsApplied: true,
+    });
+    expect(parsed.substrate).toEqual(kept);
+  });
+
+  it('survives the STORED, agent-facing per-operation array — JSON round trip and all', () => {
+    const stored = JSON.stringify([
+      withSubstrateAnchor(alreadyRecordedOutcome('REPOT', '2026-08-14', true), kept),
+      withSubstrateAnchor(appliedOutcome(), undefined),
+    ]);
+    const parsed = proposalOperationOutcomesSchema.parse(JSON.parse(stored));
+    // POSITIVE CONTROL — the array is index-aligned and populated; an empty array would satisfy every
+    // "no anchor was lost" phrasing below while proving nothing.
+    expect(parsed).toHaveLength(2);
+    expect(parsed[0]!.status).toBe('already-recorded-on-day');
+    expect(parsed[1]!.status).toBe('applied');
+
+    expect(parsed[0]!.substrate).toEqual(kept);
+    // A non-REPOT operation says NOTHING about the anchor — absent, never a fabricated 'refreshed'.
+    expect(parsed[1]!.substrate).toBeUndefined();
+  });
+
+  it('withSubstrateAnchor writes NO key when there is nothing to say', () => {
+    const outcome = withSubstrateAnchor(appliedOutcome(), undefined);
+    expect(outcome).toEqual({ status: 'applied' });
+    expect('substrate' in outcome).toBe(false);
+  });
+
+  it('withSubstrateAnchor does not mutate the outcome it was handed', () => {
+    const original = appliedOutcome();
+    const carried = withSubstrateAnchor(original, kept);
+    expect(carried.substrate).toEqual(kept);
+    expect(original).toEqual({ status: 'applied' });
   });
 });

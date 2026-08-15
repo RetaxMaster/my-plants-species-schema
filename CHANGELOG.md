@@ -10,6 +10,21 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
+- **`SubstrateAnchorOutcome` — "what the substrate clock actually did" — now lives here, once, beside
+  `CareWriteResult`.** A repot completion answers two independent questions: whether the care event was
+  recorded, and whether the pot's "last filled on" clock actually moved. The second one existed already,
+  but only as a type hand-declared in the API and hand-mirrored in the web, because adding it here would
+  have repacked a tarball five repos pin while other work was in flight. That scheduling reason is gone,
+  and with it the two copies.
+- **A care outcome can now CARRY its substrate answer, so an approved agent proposal stops losing it.**
+  `careWriteOutcomeSchema` gained an optional `substrate` on both arms, and `withSubstrateAnchor()` is the
+  one seam that attaches it. This closes a real silence rather than a stylistic one: the stored
+  per-operation outcome array on an applied proposal is validated by this schema on the way back out, and
+  a schema that does not declare a key STRIPS it — so a repot whose clock refused to move round-tripped as
+  an ordinary success for both the approving owner and the agent. Absence still means "this write said
+  nothing about the anchor" and must never be read as "the anchor was refreshed": passing nothing writes
+  no key at all, so an older stored proposal replays exactly as it did before.
+
 - **`verdictIsAnswer(verdict)` — "did this reading decide anything?" — now lives here, once, beside
   `READING_VERDICTS`.** It answers the question three different seams need: which of a day's readings
   speaks for that day, whether an edit that decides nothing may overwrite an answer already stored, and

@@ -30,6 +30,37 @@ export function isOnePerDayTask(task: string): task is OnePerDayTask {
 }
 
 /**
+ * WHAT THE SUBSTRATE CLOCK ACTUALLY DID — the second, INDEPENDENT outcome a REPOT completion answers with.
+ *
+ * The substrate anchor (`plants.substrate_refreshed_on` — "when this pot was last filled") only ever moves
+ * FORWARD (owner ruling, 2026-08-14; API finding E8). A completion dated strictly BEFORE the stored anchor
+ * is still recorded as a real event, but the clock stays where the newer repot put it and no calibrated
+ * reading is retracted — so the result has to say which of the two happened, or the reader cannot tell a
+ * write from a refusal. That silence is exactly what E8 measured: a duplicate REPOT dragged the anchor 197
+ * days backwards and every surface reported an ordinary success.
+ *
+ * ⚠️ INDEPENDENT OF `CareWriteOutcome`'s `status`, never derived from it. A submission can be BOTH
+ * `already-recorded-on-day` AND anchor-`kept` — that combination is the case the API measured. Read the two
+ * separately; never infer one from the other.
+ *
+ * `refreshedOn` is a `YYYY-MM-DD` calendar day — never a timestamp, and never an ISO instant a renderer
+ * could shift by a UTC offset. On `refreshed` it is the day the anchor now sits on (the day the caller
+ * supplied); on `kept` it is the SURVIVING, strictly NEWER anchor the caller's older day did not displace —
+ * which is the value the owner has to be shown, because it is the one fact the write did not change.
+ *
+ * It lives HERE, in the shared package beside `CareWriteResult`, because the API produces it, the web
+ * renders it and the agent proposal mediator stores it: three surfaces, one type expression. It was briefly
+ * hand-declared in the API and mirrored in the web (a scheduling compromise while five repos' pinned
+ * tarballs were in flight); that fork is closed.
+ */
+export const substrateAnchorOutcomeSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('refreshed'), refreshedOn: strictYmd }),
+  z.object({ status: z.literal('kept'), refreshedOn: strictYmd }),
+]);
+
+export type SubstrateAnchorOutcome = z.infer<typeof substrateAnchorOutcomeSchema>;
+
+/**
  * WHAT A CARE WRITE ACTUALLY DID — the discriminated outcome that replaces a bare success.
  *
  * A second same-day submission still returns SUCCESS and still writes no second `CareEvent` (owner decision
@@ -42,9 +73,20 @@ export function isOnePerDayTask(task: string): task is OnePerDayTask {
  * unconditionally; only the `CareEvent` write is gated. So `already-recorded-on-day` describes THE CARE-EVENT
  * WRITE ONLY, and any surface rendering it must never phrase it as though the whole operation was a no-op
  * when `otherEffectsApplied` is true.
+ *
+ * ⚠️ `substrate` IS OPTIONAL BY CONSTRUCTION, ON BOTH ARMS, AND ITS ABSENCE IS NOT A DEFAULT. Only a REPOT
+ * completion touches the substrate clock, so every other care write legitimately answers nothing about it —
+ * and a proposal stored before this field existed replays with it absent. A reader must therefore treat
+ * `undefined` as "this write said nothing about the anchor", never as "the anchor was refreshed". It is on
+ * BOTH arms rather than only on `already-recorded-on-day` because the pairing is free: a REPOT that DID
+ * write its care event can still have had its anchor kept.
  */
 export const careWriteOutcomeSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('applied') }),
+  z.object({
+    status: z.literal('applied'),
+    /** Present only on a REPOT completion — see the `substrate` note above. */
+    substrate: substrateAnchorOutcomeSchema.optional(),
+  }),
   z.object({
     status: z.literal('already-recorded-on-day'),
     /** WHICH task already had its record on that day. Carried so the reader never has to infer it. */
@@ -53,6 +95,8 @@ export const careWriteOutcomeSchema = z.discriminatedUnion('status', [
     occurredOn: strictYmd,
     /** True when real changes beyond the care event still landed (the REPOT case). */
     otherEffectsApplied: z.boolean(),
+    /** Present only on a REPOT completion — see the `substrate` note above. */
+    substrate: substrateAnchorOutcomeSchema.optional(),
   }),
 ]);
 
@@ -69,6 +113,22 @@ export function alreadyRecordedOutcome(
   otherEffectsApplied: boolean,
 ): CareWriteOutcome {
   return { status: 'already-recorded-on-day', task, occurredOn, otherEffectsApplied };
+}
+
+/**
+ * THE ONE PLACE A SUBSTRATE OUTCOME IS ATTACHED TO A CARE OUTCOME.
+ *
+ * The care cores build their outcome long before anyone knows whether the substrate clock moved (only the
+ * REPOT path calls the substrate core at all), so the two facts meet at exactly one seam. Making that seam
+ * a named function rather than an inline spread is what keeps the "absent means SILENT, not refreshed"
+ * rule above true: passing `undefined` writes NO key, so a non-REPOT write can never accidentally persist
+ * a `substrate: undefined` that a later reader mistakes for an answer.
+ */
+export function withSubstrateAnchor(
+  outcome: CareWriteOutcome,
+  substrate: SubstrateAnchorOutcome | undefined,
+): CareWriteOutcome {
+  return substrate ? { ...outcome, substrate } : outcome;
 }
 
 /**
