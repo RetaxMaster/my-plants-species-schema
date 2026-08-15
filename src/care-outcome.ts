@@ -68,11 +68,26 @@ export type SubstrateAnchorOutcome = z.infer<typeof substrateAnchorOutcomeSchema
  * the result now SAYS SO instead of being indistinguishable from a write.
  *
  * ⚠️ `otherEffectsApplied` IS THE SHARPEST EDGE IN THIS TYPE, and it exists because "no second CareEvent was
- * created" and "nothing was applied" are DIFFERENT CLAIMS — and for REPOT the second is FALSE. On a duplicate
- * REPOT completion the profile write, the substrate refresh and the care-plan recompute all still run
- * unconditionally; only the `CareEvent` write is gated. So `already-recorded-on-day` describes THE CARE-EVENT
- * WRITE ONLY, and any surface rendering it must never phrase it as though the whole operation was a no-op
- * when `otherEffectsApplied` is true.
+ * created" and "nothing was applied" are DIFFERENT CLAIMS. Read it against TWO INDEPENDENT AXES, or you will
+ * collapse them back into one and reintroduce the exact defect this paragraph exists to prevent (a fully
+ * REFUSED repot once read as "partial" because a reader reasoned from an earlier version of this text):
+ *
+ *   - whether a `CareEvent` is written at all is decided by the ONE-PER-DAY rule (`ONE_PER_DAY_TASKS` above)
+ *     — a second submission naming a day that already has one writes no second `CareEvent`, full stop;
+ *   - whether the PROFILE/SUBSTRATE side effects run is decided SEPARATELY, by the day-vs-anchor comparison
+ *     (`compareSubstrateAnchor`, `my-plants-api`'s `substrate.write-core.ts`): they run when the submitted
+ *     day is NEWER than or EQUAL TO the stored anchor, and they are SKIPPED when the day is STRICTLY OLDER
+ *     than the stored anchor (owner ruling, 2026-08-14) — a refused write must never be preceded by a
+ *     profile write describing a fill that never became the current one.
+ *
+ * `otherEffectsApplied` exists ONLY on the `already-recorded-on-day` arm (a fresh `applied` write has no
+ * "other" to distinguish from its own primary effect), and reports the SECOND axis: `true` when the day was
+ * NOT refused, so the profile write, the substrate refresh and the care-plan recompute still landed even
+ * though the `CareEvent` itself was gated — `already-recorded-on-day` then describes THE CARE-EVENT WRITE
+ * ONLY, and a surface rendering it must never phrase it as though the whole operation was a no-op. It is now
+ * `false` when the submitted day was REFUSED by the anchor comparison (strictly older than the stored
+ * anchor): with the profile write skipped too, nothing landed for this submission but the history record —
+ * a fully refused repot, not a partial one.
  *
  * ⚠️ `substrate` IS OPTIONAL BY CONSTRUCTION, ON BOTH ARMS, AND ITS ABSENCE IS NOT A DEFAULT. Only a REPOT
  * completion touches the substrate clock, so every other care write legitimately answers nothing about it —
