@@ -6,6 +6,7 @@ import {
   careWriteOutcomeSchema,
   deriveProposalOutcomeStatus,
   isOnePerDayTask,
+  isProposalOperationNotFullyApplied,
   proposalOperationOutcomesSchema,
   substrateAnchorOutcomeSchema,
   withSubstrateAnchor,
@@ -98,6 +99,65 @@ describe('deriveProposalOutcomeStatus', () => {
   });
 
   it('an empty array is ALL_APPLIED — nothing was swallowed', () => {
+    expect(deriveProposalOutcomeStatus([])).toBe('ALL_APPLIED');
+  });
+});
+
+/**
+ * V2 (nothing-left-open, 2026-08-14) — an anchor refusal IS a refusal. Before this, the derivation counted
+ * ONLY `already-recorded-on-day`, so an operation whose `status` said `applied` but whose `substrate` said
+ * `kept` — a REPOT that moved no column, retracted nothing and wrote no audit row for its anchor half —
+ * contributed to `ALL_APPLIED`: an unqualified total success for a write that partly refused.
+ */
+describe('deriveProposalOutcomeStatus — a kept substrate anchor is a partial refusal', () => {
+  const applied = appliedOutcome();
+  const already = alreadyRecordedOutcome('WATER', '2026-08-01', false);
+  const appliedKept = withSubstrateAnchor(appliedOutcome(), { status: 'kept', refreshedOn: '2026-03-01' });
+  const appliedRefreshed = withSubstrateAnchor(appliedOutcome(), { status: 'refreshed', refreshedOn: '2026-08-14' });
+  const alreadyKept = withSubstrateAnchor(already, { status: 'kept', refreshedOn: '2026-03-01' });
+
+  it('isProposalOperationNotFullyApplied is false for a plain applied write with no substrate answer', () => {
+    expect(isProposalOperationNotFullyApplied(applied)).toBe(false);
+  });
+
+  it('isProposalOperationNotFullyApplied is false for applied + a REFRESHED anchor', () => {
+    expect(isProposalOperationNotFullyApplied(appliedRefreshed)).toBe(false);
+  });
+
+  it('isProposalOperationNotFullyApplied is true for applied + a KEPT anchor', () => {
+    expect(isProposalOperationNotFullyApplied(appliedKept)).toBe(true);
+  });
+
+  it('ALL_APPLIED: every operation applied and none carries a substrate anchor at all', () => {
+    expect(deriveProposalOutcomeStatus([applied, applied])).toBe('ALL_APPLIED');
+  });
+
+  it('ALL_APPLIED: every operation applied, one of them with a REFRESHED anchor', () => {
+    expect(deriveProposalOutcomeStatus([applied, appliedRefreshed])).toBe('ALL_APPLIED');
+  });
+
+  it('PARTIALLY_ALREADY_RECORDED: one plain applied + one applied-with-KEPT-anchor', () => {
+    // RED under the OLD derivation (which filtered on `status === 'already-recorded-on-day'` alone): both
+    // operations here have `status: 'applied'`, so the old code counted 0 refusals and returned
+    // ALL_APPLIED — an unqualified success for a proposal that silently kept its anchor.
+    expect(deriveProposalOutcomeStatus([applied, appliedKept])).toBe('PARTIALLY_ALREADY_RECORDED');
+  });
+
+  it('ALL_ALREADY_RECORDED: every operation applied-with-a-KEPT-anchor', () => {
+    // RED under the OLD derivation for the same reason: `status` is `applied` on every entry, so the old
+    // code returned ALL_APPLIED instead.
+    expect(deriveProposalOutcomeStatus([appliedKept, appliedKept])).toBe('ALL_ALREADY_RECORDED');
+  });
+
+  it('ALL_ALREADY_RECORDED: a KEPT anchor combined with an already-recorded-on-day operation', () => {
+    expect(deriveProposalOutcomeStatus([alreadyKept, already])).toBe('ALL_ALREADY_RECORDED');
+  });
+
+  it('PARTIALLY_ALREADY_RECORDED: a KEPT anchor combined with a plain applied operation with no anchor', () => {
+    expect(deriveProposalOutcomeStatus([alreadyKept, applied])).toBe('PARTIALLY_ALREADY_RECORDED');
+  });
+
+  it('the empty array is still ALL_APPLIED', () => {
     expect(deriveProposalOutcomeStatus([])).toBe('ALL_APPLIED');
   });
 });

@@ -8,6 +8,19 @@ changed for whoever depends on this package, not a commit dump.
 
 ## Unreleased
 
+### Fixed
+
+- **A kept substrate anchor no longer counts as a full success.** `deriveProposalOutcomeStatus` used to
+  look only at whether an operation's care-event write was a same-day duplicate. A REPOT completion (or a
+  standalone substrate refresh) whose day was older than the stored anchor still reports `status: 'applied'`
+  even though nothing about the anchor moved — no column changed, no reading was retracted, no audit row was
+  written for that half of the write — and the old derivation counted that operation as a plain success, so
+  a proposal made of nothing but kept anchors derived `ALL_APPLIED`. The derivation now also treats an
+  operation carrying `substrate.status === 'kept'` as not fully applied, through one exported predicate
+  (`isProposalOperationNotFullyApplied`) so a future consumer shares the same answer instead of re-deriving
+  it. The three existing `ProposalOutcomeStatus` values are unchanged; only which operations count toward
+  them changed.
+
 ### Added
 
 - **`SubstrateAnchorOutcome` — "what the substrate clock actually did" — now lives here, once, beside

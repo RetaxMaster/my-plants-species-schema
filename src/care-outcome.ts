@@ -152,11 +152,28 @@ export const PROPOSAL_OUTCOME_STATUSES = [
 
 export type ProposalOutcomeStatus = (typeof PROPOSAL_OUTCOME_STATUSES)[number];
 
+/**
+ * TRUE when an operation's outcome must NOT count toward `ALL_APPLIED` — either its care-event half was
+ * swallowed as a same-day duplicate (`already-recorded-on-day`), OR its substrate half carries a `kept`
+ * anchor. The second half matters on its own: a REPOT `care.done` (or a `substrate.refresh`) can be a
+ * fresh, non-duplicate `applied` write whose day was still older than the stored anchor — nothing moved,
+ * no column changed, no audit row recorded that portion — and that is a partial refusal even though
+ * `status` alone reads as a plain success (see the `CareWriteOutcome` doc comment: the two facts are read
+ * INDEPENDENTLY, never inferred from one another).
+ *
+ * Exported and written ONCE so the API's consent-surface renderer — and any future consumer of a stored
+ * outcome array — shares this exact answer instead of re-deriving it in a second place, which is exactly
+ * the fork this shared contract exists to prevent.
+ */
+export function isProposalOperationNotFullyApplied(outcome: CareWriteOutcome): boolean {
+  return outcome.status === 'already-recorded-on-day' || outcome.substrate?.status === 'kept';
+}
+
 export function deriveProposalOutcomeStatus(
   outcomes: readonly CareWriteOutcome[],
 ): ProposalOutcomeStatus {
-  const already = outcomes.filter((o) => o.status === 'already-recorded-on-day').length;
-  if (already === 0) return 'ALL_APPLIED';
-  if (already === outcomes.length) return 'ALL_ALREADY_RECORDED';
+  const notFullyApplied = outcomes.filter(isProposalOperationNotFullyApplied).length;
+  if (notFullyApplied === 0) return 'ALL_APPLIED';
+  if (notFullyApplied === outcomes.length) return 'ALL_ALREADY_RECORDED';
   return 'PARTIALLY_ALREADY_RECORDED';
 }
