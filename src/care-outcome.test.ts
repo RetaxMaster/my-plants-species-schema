@@ -9,6 +9,7 @@ import {
   isProposalOperationNotFullyApplied,
   proposalOperationOutcomesSchema,
   substrateAnchorOutcomeSchema,
+  withPotDetailsDiscarded,
   withSubstrateAnchor,
 } from './care-outcome.js';
 
@@ -258,5 +259,52 @@ describe('the substrate anchor SURVIVES the shared outcome contract end to end',
     const carried = withSubstrateAnchor(original, kept);
     expect(carried.substrate).toEqual(kept);
     expect(original).toEqual({ status: 'applied' });
+  });
+});
+
+// ---- F4 (nothing-left-open code review, 2026-08-14) --------------------------------------------------
+//
+// A REPOT completion whose day is refused AND which is also a same-day duplicate writes NO `CareEvent`, so
+// the diameter and mix the owner typed have nowhere to live — this flag is the only channel that can say
+// so. It is finding E8's own 197-day case, i.e. the branch an owner actually reaches.
+describe('potDetailsDiscarded — the pot details had nowhere to go', () => {
+  const duplicate = () => alreadyRecordedOutcome('REPOT', '2026-08-14', false);
+
+  it('survives the contract, and the STORED agent-facing array, JSON round trip and all', () => {
+    const stored = JSON.stringify([withPotDetailsDiscarded(duplicate(), true)]);
+    const parsed = proposalOperationOutcomesSchema.parse(JSON.parse(stored));
+    // POSITIVE CONTROL — the operation round-tripped whole, so the flag assertion is about the flag.
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]!.status).toBe('already-recorded-on-day');
+    expect(parsed[0]).toMatchObject({ potDetailsDiscarded: true });
+  });
+
+  it('writes NO key when nothing was discarded — absence is silence, never "they were applied"', () => {
+    const outcome = withPotDetailsDiscarded(duplicate(), false);
+    expect('potDetailsDiscarded' in outcome).toBe(false);
+    // POSITIVE CONTROL — the same seam DOES write the key when there is something to report.
+    expect('potDetailsDiscarded' in withPotDetailsDiscarded(duplicate(), true)).toBe(true);
+  });
+
+  it('never attaches to an APPLIED outcome — that arm has a CareEvent payload to carry the values', () => {
+    const outcome = withPotDetailsDiscarded(appliedOutcome(), true);
+    expect(outcome).toEqual({ status: 'applied' });
+  });
+
+  it('does not mutate the outcome it was handed', () => {
+    const original = duplicate();
+    const carried = withPotDetailsDiscarded(original, true);
+    expect(carried).toMatchObject({ potDetailsDiscarded: true });
+    expect('potDetailsDiscarded' in original).toBe(false);
+  });
+
+  it('travels WITH the substrate anchor — the two facts are independent and both ride', () => {
+    const both = withPotDetailsDiscarded(
+      withSubstrateAnchor(duplicate(), { status: 'kept', refreshedOn: '2026-08-11' }),
+      true,
+    );
+    const parsed = careWriteOutcomeSchema.parse(both);
+    expect(parsed).toMatchObject({ potDetailsDiscarded: true, otherEffectsApplied: false });
+    expect(parsed.substrate).toEqual({ status: 'kept', refreshedOn: '2026-08-11' });
   });
 });

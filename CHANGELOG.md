@@ -23,6 +23,16 @@ changed for whoever depends on this package, not a commit dump.
 
 ### Added
 
+- **A care outcome can now say that the pot details a repot carried were discarded.** A repot completion
+  submits the new pot's diameter and soil mix. When the day it names is older than the stored substrate
+  anchor the profile write is skipped, and when that submission is *also* a second record for a day that
+  already had one, no care event is written either — so the values have nowhere at all to live. The
+  `already-recorded-on-day` arm gained an optional `potDetailsDiscarded`, attached through a new
+  `withPotDetailsDiscarded()` seam that mirrors `withSubstrateAnchor()`: passing `false` writes no key, so
+  an absent flag can never be read as an assertion. It is deliberately not derivable from the outcome's
+  other members — an owner may answer "I don't know" to both fields, and only the writer knows whether
+  anything was supplied.
+
 - **`SubstrateAnchorOutcome` — "what the substrate clock actually did" — now lives here, once, beside
   `CareWriteResult`.** A repot completion answers two independent questions: whether the care event was
   recorded, and whether the pot's "last filled on" clock actually moved. The second one existed already,
